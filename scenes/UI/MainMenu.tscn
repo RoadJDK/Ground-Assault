@@ -1,0 +1,43 @@
+[gd_scene load_steps=3 format=3 uid="uid://bydsxqe61cunq"]
+
+[ext_resource type="Script" uid="uid://cprwqsa5cr7ow" path="res://scripts/MainMenu.gd" id="1_11hie"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_58fj5"]
+font_size = 100
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_11hie")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = -27.0
+offset_top = -16.0
+offset_right = 1951.0
+offset_bottom = 1107.0
+color = Color(0, 0, 0, 1)
+
+[node name="Label" type="Label" parent="."]
+layout_mode = 0
+offset_left = 629.0
+offset_top = 185.0
+offset_right = 1297.0
+offset_bottom = 322.0
+text = "BATTLE BORN"
+label_settings = SubResource("LabelSettings_58fj5")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_left = 451.0
+offset_top = 530.0
+offset_right = 1467.0
+offset_bottom = 873.0
+
+[node name="PlayButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "PLAY"
+
+[node name="QuitButton" type="Button" parent="VBoxContainer"]
+layout_mode = 2
+text = "QUIT"

@@ -1,0 +1,27 @@
+[gd_scene load_steps=2 format=3 uid="uid://dgse37vu3vw8f"]
+
+[ext_resource type="PackedScene" uid="uid://c2pr8hbmu3531" path="res://scenes/Troops/Troop.tscn" id="1_04x2m"]
+
+[node name="Rocket" instance=ExtResource("1_04x2m")]
+unit_type = 2
+
+[node name="ColorRect" parent="." index="0"]
+offset_left = -13.0
+offset_top = -8.0
+offset_right = 13.0
+offset_bottom = 8.0
+
+[node name="CollisionShape2D" parent="." index="1"]
+position = Vector2(0, 0)
+
+[node name="ColorRect3" type="ColorRect" parent="." index="2"]
+offset_left = -6.0
+offset_top = -12.0
+offset_right = -1.0
+offset_bottom = 12.0
+
+[node name="ColorRect2" type="ColorRect" parent="." index="3"]
+offset_left = -13.0
+offset_top = -16.0
+offset_right = -6.0
+offset_bottom = 16.0

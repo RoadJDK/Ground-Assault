@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://bosolhbfpbnnx"]
+
+[ext_resource type="Script" uid="uid://d1eqv6vslop8" path="res://scripts/Squad.gd" id="1_67lrx"]
+
+[node name="Squad" type="Node2D"]
+script = ExtResource("1_67lrx")
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+target_desired_distance = 20.0

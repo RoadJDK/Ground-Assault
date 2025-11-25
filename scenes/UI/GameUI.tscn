@@ -1,0 +1,43 @@
+[gd_scene load_steps=2 format=3 uid="uid://udsjaawykctm"]
+
+[ext_resource type="Script" uid="uid://8p2vf8sfcc0d" path="res://scripts/GameUI.gd" id="1_sjnlv"]
+
+[node name="GameUi" type="CanvasLayer"]
+script = ExtResource("1_sjnlv")
+
+[node name="BuildMenu" type="PanelContainer" parent="."]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -31.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="BuildMenu"]
+layout_mode = 2
+alignment = 1
+
+[node name="GoldLabel" type="Label" parent="BuildMenu/HBoxContainer"]
+layout_mode = 2
+
+[node name="BtnGenerator" type="Button" parent="BuildMenu/HBoxContainer"]
+layout_mode = 2
+text = "Generator 50g"
+
+[node name="BtnTurret" type="Button" parent="BuildMenu/HBoxContainer"]
+layout_mode = 2
+text = "Turret 100g"
+
+[node name="BtnFactory" type="Button" parent="BuildMenu/HBoxContainer"]
+layout_mode = 2
+text = "Factory 150g"
+
+[node name="BtnShield" type="Button" parent="BuildMenu/HBoxContainer"]
+layout_mode = 2
+text = "Shield 80g"
+
+[connection signal="pressed" from="BuildMenu/HBoxContainer/BtnGenerator" to="." method="_on_btn_generator_pressed"]
+[connection signal="pressed" from="BuildMenu/HBoxContainer/BtnTurret" to="." method="_on_btn_turret_pressed"]
+[connection signal="pressed" from="BuildMenu/HBoxContainer/BtnFactory" to="." method="_on_btn_factory_pressed"]
+[connection signal="pressed" from="BuildMenu/HBoxContainer/BtnShield" to="." method="_on_btn_shield_pressed"]

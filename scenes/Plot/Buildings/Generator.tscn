@@ -1,0 +1,20 @@
+[gd_scene load_steps=3 format=3 uid="uid://yxa6bsa08ea1"]
+
+[ext_resource type="PackedScene" uid="uid://dqp35sgd4cfj" path="res://scenes/Plot/Building.tscn" id="1_vucqx"]
+[ext_resource type="Script" uid="uid://c67lmi57agxtf" path="res://scripts/Generator.gd" id="2_os1ee"]
+
+[node name="Generator" instance=ExtResource("1_vucqx")]
+script = ExtResource("2_os1ee")
+gold_per_tick = 2
+
+[node name="ColorRect" parent="." index="1"]
+offset_left = -25.0
+offset_top = -25.0
+offset_right = 25.0
+offset_bottom = 25.0
+color = Color(0.91176796, 0.98811275, 0, 1)
+
+[node name="Timer" type="Timer" parent="." index="2"]
+autostart = true
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

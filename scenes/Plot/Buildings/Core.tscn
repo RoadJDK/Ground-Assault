@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://2abnbcle221a"]
+
+[ext_resource type="PackedScene" uid="uid://dqp35sgd4cfj" path="res://scenes/Plot/Building.tscn" id="1_cne8d"]
+[ext_resource type="Script" uid="uid://d2f1ja2cm2av7" path="res://scripts/Core.gd" id="2_btu6o"]
+
+[node name="Core" instance=ExtResource("1_cne8d")]
+script = ExtResource("2_btu6o")
+
+[node name="ColorRect" parent="." index="1"]
+color = Color(0.8832099, 0.98624295, 0.46754217, 1)

@@ -1,0 +1,24 @@
+[gd_scene load_steps=3 format=3 uid="uid://dqp35sgd4cfj"]
+
+[ext_resource type="Script" uid="uid://fet5tf0wtdkf" path="res://scripts/Building.gd" id="1_wgncj"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wgncj"]
+size = Vector2(50, 50)
+
+[node name="Building" type="Node2D" groups=["building"]]
+script = ExtResource("1_wgncj")
+
+[node name="Area2D" type="Area2D" parent="."]
+collision_layer = 2
+monitoring = false
+priority = 6
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+shape = SubResource("RectangleShape2D_wgncj")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+offset_left = -25.0
+offset_top = -25.0
+offset_right = 25.0
+offset_bottom = 25.0
+color = Color(0.6509804, 1, 1, 1)

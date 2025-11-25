@@ -1,0 +1,21 @@
+[gd_scene load_steps=3 format=3 uid="uid://c2pr8hbmu3531"]
+
+[ext_resource type="Script" uid="uid://xytpfy1h3s4d" path="res://scripts/Troop.gd" id="1_4fs8q"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_4fs8q"]
+size = Vector2(26, 16)
+
+[node name="Troop" type="CharacterBody2D" groups=["unit"]]
+collision_layer = 2
+motion_mode = 1
+wall_min_slide_angle = 0.0
+script = ExtResource("1_4fs8q")
+
+[node name="ColorRect2" type="ColorRect" parent="."]
+offset_left = -13.0
+offset_top = -8.0
+offset_right = 13.0
+offset_bottom = 8.0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_4fs8q")

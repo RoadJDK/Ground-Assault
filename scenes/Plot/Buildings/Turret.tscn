@@ -1,0 +1,48 @@
+[gd_scene load_steps=3 format=3 uid="uid://b67m7sqjpr2dt"]
+
+[ext_resource type="PackedScene" uid="uid://dqp35sgd4cfj" path="res://scenes/Plot/Building.tscn" id="1_hfn4d"]
+[ext_resource type="Script" uid="uid://bfhibu728d142" path="res://scripts/Turret.gd" id="2_nahgg"]
+
+[node name="Turret" instance=ExtResource("1_hfn4d")]
+script = ExtResource("2_nahgg")
+mg_damage = 20
+mg_range = 2500.0
+mg_cooldown = 2.0
+mg_speed = 1500.0
+shots_per_burst = 12
+burst_delay = 0.1
+how_damage = 10
+how_range = 6000.0
+how_cooldown = 6.0
+how_speed = 625.0
+
+[node name="ColorRect" parent="." index="1"]
+color = Color(0, 1, 0.18039216, 1)
+
+[node name="Head" type="Node2D" parent="." index="2"]
+
+[node name="Barrel2" type="ColorRect" parent="Head" index="0"]
+offset_left = 15.0
+offset_top = -10.0
+offset_right = 45.0
+offset_bottom = -5.0
+color = Color(0, 0, 0, 1)
+
+[node name="Barrel" type="ColorRect" parent="Head" index="1"]
+offset_left = 15.0
+offset_right = 65.0
+offset_bottom = 10.0
+color = Color(0, 0, 0, 1)
+
+[node name="ColorRect" type="ColorRect" parent="Head" index="2"]
+offset_left = -15.0
+offset_top = -15.0
+offset_right = 15.0
+offset_bottom = 15.0
+color = Color(0, 0, 0, 1)
+
+[node name="MuzzleMG" type="Marker2D" parent="Head" index="3"]
+position = Vector2(65, 0)
+
+[node name="MuzzleHowitzer" type="Marker2D" parent="Head" index="4"]
+position = Vector2(65, 0)

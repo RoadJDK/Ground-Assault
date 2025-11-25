@@ -1,0 +1,44 @@
+[gd_scene load_steps=6 format=3 uid="uid://iqsseseehi4w"]
+
+[ext_resource type="Script" uid="uid://cdueyeiye3p5e" path="res://scripts/CameraControl.gd" id="1_0bbpv"]
+[ext_resource type="Script" uid="uid://nkiownn8xb1i" path="res://scripts/Main.gd" id="1_rarhs"]
+[ext_resource type="PackedScene" uid="uid://udsjaawykctm" path="res://scenes/UI/GameUI.tscn" id="4_rarhs"]
+
+[sub_resource type="NavigationPolygon" id="NavigationPolygon_0bbpv"]
+vertices = PackedVector2Array(6934, -3556, 6934, 4123.992, -6203.0234, 4099, -6237.9688, -3580.9922)
+polygons = Array[PackedInt32Array]([PackedInt32Array(0, 1, 2, 3)])
+outlines = Array[PackedVector2Array]([PackedVector2Array(-6243, -3586, -6188, 4277, 6939, 4129, 6939, -3561)])
+
+[sub_resource type="Environment" id="Environment_rarhs"]
+background_mode = 3
+glow_enabled = true
+glow_intensity = 0.47
+glow_strength = 0.98
+glow_blend_mode = 1
+glow_hdr_threshold = 0.0
+glow_hdr_scale = 4.0
+adjustment_enabled = true
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_rarhs")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(0.2, 0.2)
+position_smoothing_enabled = true
+position_smoothing_speed = 30.0
+script = ExtResource("1_0bbpv")
+
+[node name="Map" type="ColorRect" parent="."]
+offset_left = -12251.0
+offset_top = -6666.0
+offset_right = 12293.0
+offset_bottom = 6650.0
+color = Color(0, 0, 0, 1)
+
+[node name="NavigationRegion2D" type="NavigationRegion2D" parent="."]
+navigation_polygon = SubResource("NavigationPolygon_0bbpv")
+
+[node name="GameUI" parent="." instance=ExtResource("4_rarhs")]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_rarhs")
