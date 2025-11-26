@@ -18,13 +18,14 @@ func _ready() -> void:
 		var sync = MultiplayerSynchronizer.new()
 		sync.name = "MultiplayerSynchronizer"
 		sync.replication_interval = 0.016
-		add_child(sync)
 		
 		var config = SceneReplicationConfig.new()
 		config.add_property("." + ":position")
 		config.add_property("." + ":rotation")
 		config.add_property("." + ":faction") # Sync Faction too
 		sync.replication_config = config
+		
+		add_child(sync)
 		
 		# NESTED SPAWNER FOR TROOPS
 		# Only add spawner; allow it to auto-detect children added by authority

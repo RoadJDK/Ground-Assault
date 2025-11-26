@@ -63,12 +63,14 @@ func _ready() -> void:
 		var sync = MultiplayerSynchronizer.new()
 		sync.name = "MultiplayerSynchronizer"
 		sync.replication_interval = 0.016 # Roughly 60 times per second
-		add_child(sync)
 		
 		var config = SceneReplicationConfig.new()
 		config.add_property("." + ":position")
 		config.add_property("." + ":rotation")
+		config.add_property("." + ":faction") # Sync Faction for colors
 		sync.replication_config = config
+		
+		add_child(sync)
 		
 		# Determine Authority:
 		# Troops are usually spawned by Squads/Buildings. 
