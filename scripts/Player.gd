@@ -83,6 +83,10 @@ func _ready() -> void:
 	weapon_node = find_child("Weapon", true, false)
 
 func _physics_process(delta: float) -> void:
+	# Cooldown Management (Runs on all peers)
+	if mg_timer > 0:
+		mg_timer -= delta
+
 	if GameManager.is_multiplayer:
 		if not is_multiplayer_authority():
 			# We are a remote puppet. 
@@ -230,6 +234,9 @@ func _toggle_zoom_out() -> void:
 		_target_zoom = Vector2(required_zoom, required_zoom)
 
 func _shoot_mg() -> void:
+	# Prevent RPC spam by checking locally first
+	if mg_timer > 0: return
+
 	if GameManager.is_multiplayer:
 		rpc("shoot_mg_action")
 	else:
