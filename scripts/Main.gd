@@ -82,12 +82,13 @@ func _ready() -> void:
 	
 	game_ui = find_child("GameUI", true, false)
 	if game_ui:
-		print("GameUI Found.")
-		game_ui.build_requested.connect(_on_ui_build_tool_selected)
+		print("GameUI Found. Connecting signals...")
+		if not game_ui.build_requested.is_connected(_on_ui_build_tool_selected):
+			game_ui.build_requested.connect(_on_ui_build_tool_selected)
 		_update_gold_ui()
 		_update_unit_ui()
 	else:
-		print("ERROR: GameUI NOT Found!")
+		print("ERROR: GameUI NOT Found! Check the scene tree.")
 	
 	# --- PLAYER SETUP ---
 	var y_center = (LIMIT_TOP + LIMIT_BOTTOM) / 2.0
