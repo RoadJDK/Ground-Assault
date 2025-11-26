@@ -59,19 +59,17 @@ func _ready() -> void:
 	if GameManager.is_multiplayer:
 		var unit_spawner = MultiplayerSpawner.new()
 		unit_spawner.name = "UnitSpawner"
+		add_child(unit_spawner)
 		unit_spawner.spawn_path = unit_container.get_path()
 		unit_spawner.add_spawnable_scene("res://scenes/Troops/Squad.tscn")
-		add_child(unit_spawner)
 		
 		var proj_spawner = MultiplayerSpawner.new()
 		proj_spawner.name = "ProjectileSpawner"
+		add_child(proj_spawner)
 		proj_spawner.spawn_path = proj_container.get_path()
-		# Remove explicit scene adds if using spawn_function (though good to keep for cache?)
-		# Actually spawn_function requires scenes to be in spawnable_scenes list or cache.
 		proj_spawner.add_spawnable_scene("res://scenes/Projectiles/ProjectileMG.tscn")
 		proj_spawner.add_spawnable_scene("res://scenes/Projectiles/ProjectileHowitzer.tscn")
 		proj_spawner.spawn_function = Callable(self, "_spawn_projectile")
-		add_child(proj_spawner)
 	
 	_generate_all_plots()
 	_generate_obstacles(10) # Generate obstacles
@@ -81,6 +79,8 @@ func _ready() -> void:
 	
 	# Rebake Navigation
 	var nav_region = find_child("NavigationRegion2D", true, false)
+	
+	game_ui = find_child("GameUI", true, false)
 	if game_ui:
 		print("GameUI Found.")
 		game_ui.build_requested.connect(_on_ui_build_tool_selected)
@@ -257,6 +257,21 @@ func _is_position_valid(pos: Vector2) -> bool:
 		if pos.distance_to(existing.global_position) < MIN_PLOT_DIST:
 			return false
 	return true
+
+func _spawn_projectile(data: Variant) -> Node:
+	var scene = load(data.scene_path)
+	var proj = scene.instantiate()
+	proj.global_position = data.pos
+	proj.rotation = data.rot
+	
+	var shooter_node = null
+	if data.has("shooter_path") and data.shooter_path:
+		shooter_node = get_node_or_null(data.shooter_path)
+	
+	if proj.has_method("setup"):
+		proj.setup(data.dmg, data.spd, data.group, shooter_node, data.radius)
+		
+	return proj
 
 func _on_building_built(type_name: String, faction: String) -> void:
 	var cost = building_costs.get(type_name, 0)

@@ -60,11 +60,9 @@ func _ready() -> void:
 	# --- NETWORK SYNC ---
 	if GameManager.is_multiplayer:
 		var sync = MultiplayerSynchronizer.new()
-		sync.name = "MultiplayerSynchronizer"
-		sync.replication_interval = 0.016
-		sync.delta_interval = 0.016
-		add_child(sync)
-		
+		        sync.name = "MultiplayerSynchronizer"
+		        sync.replication_interval = 0.016 # Roughly 60 times per second
+		        add_child(sync)		
 		var config = SceneReplicationConfig.new()
 		config.add_property("." + ":position")
 		config.add_property("." + ":rotation")
