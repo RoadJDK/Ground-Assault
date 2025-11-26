@@ -27,6 +27,7 @@ func _ready() -> void:
 		sync.replication_config = config
 		
 		# NESTED SPAWNER FOR TROOPS
+		# Only add spawner; allow it to auto-detect children added by authority
 		var troop_spawner = MultiplayerSpawner.new()
 		troop_spawner.name = "TroopSpawner"
 		troop_spawner.spawn_path = "." # Spawn as direct children

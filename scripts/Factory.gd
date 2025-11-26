@@ -20,6 +20,9 @@ func set_unit_type(type_val: int) -> void:
 	unit_type = type_val
 
 func _on_timer_timeout() -> void:
+	if GameManager.is_multiplayer and not multiplayer.is_server():
+		return
+
 	if _check_safe_spawn():
 		spawn_squad()
 	else:
