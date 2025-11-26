@@ -43,6 +43,9 @@ var generated_obstacles: Array[Node2D] = []
 func _ready() -> void:
 	print("--- MAIN READY STARTED ---")
 	
+	if GameManager.is_multiplayer:
+		seed(12345)
+	
 	_generate_all_plots()
 	_generate_obstacles(10) # Generate obstacles
 	
@@ -90,7 +93,10 @@ func _ready() -> void:
 	player_red.set_faction("red")
 	
 	# Initial State
-	_set_active_player("blue")
+	if GameManager.is_multiplayer:
+		_set_active_player(GameManager.my_faction)
+	else:
+		_set_active_player("blue")
 
 	await get_tree().physics_frame
 	var plots = get_tree().get_nodes_in_group("build_pad")
@@ -356,10 +362,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		var unit_changed = false
 		
-		if event.keycode == KEY_Q:
-			_set_active_player("blue")
-		elif event.keycode == KEY_E:
-			_set_active_player("red")
+		if not GameManager.is_multiplayer:
+			if event.keycode == KEY_Q:
+				_set_active_player("blue")
+			elif event.keycode == KEY_E:
+				_set_active_player("red")
 			
 		# UNIT TYPES (Y, X, C)
 		elif event.keycode == KEY_Y:
