@@ -79,6 +79,8 @@ func _ready() -> void:
 	
 	# Rebake Navigation
 	var nav_region = find_child("NavigationRegion2D", true, false)
+	if nav_region:
+		nav_region.bake_navigation_polygon()
 	
 	game_ui = find_child("GameUI", true, false)
 	if game_ui:

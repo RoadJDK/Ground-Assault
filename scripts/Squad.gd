@@ -18,7 +18,6 @@ func _ready() -> void:
 		var sync = MultiplayerSynchronizer.new()
 		sync.name = "MultiplayerSynchronizer"
 		sync.replication_interval = 0.016
-		sync.delta_interval = 0.016
 		add_child(sync)
 		
 		var config = SceneReplicationConfig.new()

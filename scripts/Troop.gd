@@ -48,6 +48,7 @@ var _color: Color = Color.WHITE
 var is_debug_unit: bool = false
 
 var nav_agent: NavigationAgent2D = null
+var _nav_path_timer: float = 0.0
 
 func _ready() -> void:
 	current_hp = max_hp
@@ -351,14 +352,6 @@ func _handle_movement(delta: float) -> void:
 			# Speed mod
 			var speed_mult = 1.0
 			if distance > 60.0: speed_mult = 1.2
-			
-			# We apply speed_mult later
-			# Store it temporarily? 
-			# Actually, NavAgent doesn't handle speed mod directly.
-			# We calculate direction, then apply speed.
-			
-			# If using Nav, we get next path pos.
-			# But for speed mod, we can just multiply result.
 			base_speed = _get_base_speed_for_type() * speed_mult 
 		else:
 			move_velocity = Vector2.ZERO
@@ -366,14 +359,24 @@ func _handle_movement(delta: float) -> void:
 	# APPLY NAVIGATION
 	if use_nav and not holding_ground:
 		if nav_agent:
-			nav_agent.target_position = final_target_pos
+			# Performance Optimization: Update path frequently but not every frame
+			_nav_path_timer -= delta
+			if _nav_path_timer <= 0:
+				_nav_path_timer = 0.1 # Increased frequency to 10Hz
+				nav_agent.target_position = final_target_pos
+			
 			if not nav_agent.is_navigation_finished():
 				var next = nav_agent.get_next_path_position()
 				move_velocity = (next - global_position).normalized() * base_speed
+			
+			# Fallback: If nav thinks we finished, but real target moved (e.g. formation), keep moving directly
+			elif global_position.distance_to(final_target_pos) > 25.0: 
+				move_velocity = (final_target_pos - global_position).normalized() * base_speed
+				# Force path update next frame to sync up
+				_nav_path_timer = 0.0
 			else:
 				move_velocity = Vector2.ZERO
 		else:
-			# Fallback if no nav agent (shouldn't happen)
 			move_velocity = (final_target_pos - global_position).normalized() * base_speed
 	
 	# 3. SEPARATION FORCE

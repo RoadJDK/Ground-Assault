@@ -263,7 +263,8 @@ func shoot_mg_action() -> void:
 	spawn_rot += randf_range(-spread_amount, spread_amount)
 	
 	if GameManager.is_multiplayer:
-		if is_multiplayer_authority():
+		# Only the Server (Host) owns the ProjectileSpawner and can spawn networked objects
+		if multiplayer.is_server():
 			var spawner = get_tree().root.find_child("ProjectileSpawner", true, false)
 			if spawner:
 				var data = {
