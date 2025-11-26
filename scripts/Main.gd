@@ -46,24 +46,11 @@ func _ready() -> void:
 	if GameManager.is_multiplayer:
 		seed(12345)
 	
-	_generate_all_plots()
-	_generate_obstacles(10) # Generate obstacles
-	
-	print("Total Plots Generated: ", generated_plots.size())
-	print("Total Obstacles Generated: ", generated_obstacles.size())
-	
-	# Rebake Navigation
-	var nav_region = find_child("NavigationRegion2D", true, false)
-	if nav_region:
-		print("Baking Navigation Mesh...")
-		nav_region.bake_navigation_polygon()
-	else:
-		print("WARNING: NavigationRegion2D not found!")
-	
 	# --- MULTIPLAYER SPAWNERS ---
+	# Create containers BEFORE generating plots/obstacles so they are reliable
 	var unit_container = Node2D.new()
 	unit_container.name = "UnitContainer"
-	add_child(unit_container, true) # Force readable name
+	add_child(unit_container, true) 
 	
 	var proj_container = Node2D.new()
 	proj_container.name = "ProjectileContainer"
@@ -82,6 +69,9 @@ func _ready() -> void:
 		proj_spawner.add_spawnable_scene("res://scenes/Projectiles/ProjectileMG.tscn")
 		proj_spawner.add_spawnable_scene("res://scenes/Projectiles/ProjectileHowitzer.tscn")
 		add_child(proj_spawner)
+	
+	_generate_all_plots()
+	_generate_obstacles(10) # Generate obstacles
 	
 	game_ui = find_child("GameUI", true, false)
 	if game_ui:
@@ -450,6 +440,23 @@ func _on_plot_clicked(plot_node) -> void:
 				return
 		
 		if selected_building_tool == "Core": return
+		
+		# --- FACTORY LIMITS ---
+		if selected_building_tool == "Factory":
+			var limits = { 0: 3, 1: 1, 2: 1 }
+			var current_count = 0
+			
+			for p in generated_plots:
+				if is_instance_valid(p.building_instance) and "unit_type" in p.building_instance:
+					# Check if it's a friendly factory
+					if p.building_instance.faction == current_build_faction and p.building_instance.name.contains("Factory"):
+						if p.building_instance.unit_type == current_unit_type:
+							current_count += 1
+			
+			if current_count >= limits.get(current_unit_type, 99):
+				print("Factory Limit Reached for this unit type!")
+				return
+		# ----------------------
 
 		var cost = building_costs.get(selected_building_tool, 0)
 		var current_gold = faction_gold.get(current_build_faction, 0)

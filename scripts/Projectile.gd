@@ -33,7 +33,11 @@ func _physics_process(delta: float) -> void:
 	
 	life_timer -= delta
 	if life_timer <= 0:
-		queue_free()
+		if GameManager.is_multiplayer:
+			if is_multiplayer_authority():
+				queue_free()
+		else:
+			queue_free()
 
 func _on_body_entered(body: Node) -> void:
 	if _exploded: return
@@ -43,38 +47,7 @@ func _on_body_entered(body: Node) -> void:
 	elif collide_with_walls:
 		if body is TileMap or body is StaticBody2D or body.is_in_group("obstacle"):
 			_trigger_impact(null)
-
-func _on_area_entered(area: Node) -> void:
-	if _exploded: return
-
-	var candidate = area
-	var max_depth = 4
-	
-	while candidate and max_depth > 0:
-		if _is_valid_target(candidate):
-			_trigger_impact(candidate)
-			return
-		candidate = candidate.get_parent()
-		max_depth -= 1
-
-func _is_valid_target(node: Node) -> bool:
-	if not node: return false
-	if node == shooter: return false
-	if node.is_in_group("projectile"): return false
-	
-	# Allow "all" to hit anything (that isn't excluded by other rules)
-	if target_group != "all":
-		if not node.is_in_group(target_group): return false
-	
-	# Friendly Fire Check
-	if shooter and "faction" in shooter and "faction" in node:
-		if shooter.faction == node.faction:
-			return false
-	
-	if not node.has_method("take_damage"): return false
-	
-	return true
-
+# ...
 func _trigger_impact(direct_hit_target: Node) -> void:
 	if explosion_radius > 0:
 		_explode()
@@ -83,50 +56,16 @@ func _trigger_impact(direct_hit_target: Node) -> void:
 		if _should_deal_damage():
 			if direct_hit_target:
 				direct_hit_target.take_damage(damage)
-		
-		queue_free()
-
-func _explode() -> void:
-	if _exploded: return
-	_exploded = true
-	
-	# 1. Stop Movement & Collision
-	set_physics_process(false)
-	set_deferred("monitoring", false)
-	set_deferred("monitorable", false)
-	
-	# 2. Hide Visuals (Sprites)
-	for child in get_children():
-		if child is Node2D:
-			child.hide()
-	
-	# 3. Deal Area Damage
-	if _should_deal_damage():
-		var potential_targets = get_tree().get_nodes_in_group(target_group)
-		for t in potential_targets:
-			if not is_instance_valid(t): continue
-			
-			# Friendly fire check
-			if shooter and "faction" in shooter and "faction" in t:
-				if shooter.faction == t.faction:
-					continue
-					
-			var dist = global_position.distance_to(t.global_position)
-			if dist <= explosion_radius:
-				if t.has_method("take_damage"):
-					t.take_damage(damage)
-	
-	# 4. Visual Feedback
-	queue_redraw()
-	
-	# 5. Wait and Delete
-	await get_tree().create_timer(0.2).timeout
-	queue_free()
+			queue_free() # Only Authority deletes
+		else:
+			# Client visual hide
+			hide()
+			set_physics_process(false)
+			set_deferred("monitoring", false)
 
 func _should_deal_damage() -> bool:
 	if not GameManager.is_multiplayer: return true
-	if shooter and shooter.is_multiplayer_authority(): return true
-	return false
+	return is_multiplayer_authority()
 
 func _draw() -> void:
 	if _exploded and explosion_radius > 0:

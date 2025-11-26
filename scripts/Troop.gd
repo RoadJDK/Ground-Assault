@@ -242,24 +242,32 @@ func _attack_target() -> void:
 			target_enemy.take_damage(damage)
 	else:
 		if projectile_scene:
-			var proj = projectile_scene.instantiate()
-			
-			var container = get_tree().root.find_child("ProjectileContainer", true, false)
-			if container:
-				container.add_child(proj, true)
-			else:
-				get_tree().root.add_child(proj, true) # Fallback
-				
-			proj.global_position = global_position
-			
 			var aim_pos = _get_predicted_position(target_enemy, attack_speed)
 			var dir = (aim_pos - global_position).angle()
-			proj.rotation = dir
-			
+			var spawn_rot = dir
 			var target_group = "unit"
 			if target_enemy.is_in_group("building"): target_group = "building"
-			
-			proj.setup(damage, attack_speed, target_group, self, explosion_radius)
+
+			if GameManager.is_multiplayer:
+				var spawner = get_tree().root.find_child("ProjectileSpawner", true, false)
+				if spawner:
+					var data = {
+						"scene_path": projectile_scene.resource_path,
+						"pos": global_position,
+						"rot": spawn_rot,
+						"dmg": damage,
+						"spd": attack_speed,
+						"group": target_group,
+						"shooter_path": get_path(),
+						"radius": explosion_radius
+					}
+					spawner.spawn(data)
+			else:
+				var proj = projectile_scene.instantiate()
+				get_tree().root.add_child(proj)
+				proj.global_position = global_position
+				proj.rotation = spawn_rot
+				proj.setup(damage, attack_speed, target_group, self, explosion_radius)
 			
 			if unit_type == UnitType.ROCKET:
 				var recoil_dir = (global_position - target_enemy.global_position).normalized()

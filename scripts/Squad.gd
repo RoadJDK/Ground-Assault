@@ -24,7 +24,17 @@ func _ready() -> void:
 		var config = SceneReplicationConfig.new()
 		config.add_property("." + ":position")
 		config.add_property("." + ":rotation")
+		config.add_property("." + ":faction") # Sync Faction too
 		sync.replication_config = config
+		
+		# NESTED SPAWNER FOR TROOPS
+		var troop_spawner = MultiplayerSpawner.new()
+		troop_spawner.name = "TroopSpawner"
+		troop_spawner.spawn_path = "." # Spawn as direct children
+		troop_spawner.add_spawnable_scene("res://scenes/Troops/Types/Ranged.tscn")
+		troop_spawner.add_spawnable_scene("res://scenes/Troops/Types/Melee.tscn")
+		troop_spawner.add_spawnable_scene("res://scenes/Troops/Types/Rocket.tscn")
+		add_child(troop_spawner)
 
 	nav_agent.path_desired_distance = 50.0
 	nav_agent.target_desired_distance = 50.0
@@ -87,7 +97,7 @@ func setup_squad_formation(cols: int, rows: int) -> void:
 	for x in range(cols):
 		for y in range(rows):
 			var troop = troop_scene.instantiate()
-			add_child(troop)
+			add_child(troop, true)
 			var pos_x = offset_start.x + (x * spacing)
 			var pos_y = offset_start.y + (y * spacing)
 			

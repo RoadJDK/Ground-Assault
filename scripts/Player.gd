@@ -1,7 +1,7 @@
 extends CharacterBody2D
 
-@export var speed: float = 1200.0
-@export var sprint_speed: float = 2400.0
+@export var speed: float = 600.0
+@export var sprint_speed: float = 1200.0
 
 # Zoom Settings
 @export var min_zoom: float = 0.5
@@ -258,24 +258,31 @@ func shoot_mg_action() -> void:
 	var spread_amount = 0.05 # Base spread
 	if velocity.length() > 10.0:
 		spread_amount = 0.1 # Moving spread
-		# Add position jitter when moving for "bullet stream" feel
 		spawn_pos += Vector2(randf_range(-5, 5), randf_range(-5, 5))
 		
 	spawn_rot += randf_range(-spread_amount, spread_amount)
 	
-	var proj = PROJ_MG_SCENE.instantiate()
-	
-	var container = get_tree().root.find_child("ProjectileContainer", true, false)
-	if container:
-		container.add_child(proj, true)
+	if GameManager.is_multiplayer:
+		if is_multiplayer_authority():
+			var spawner = get_tree().root.find_child("ProjectileSpawner", true, false)
+			if spawner:
+				var data = {
+					"scene_path": "res://scenes/Projectiles/ProjectileMG.tscn",
+					"pos": spawn_pos,
+					"rot": spawn_rot,
+					"dmg": mg_damage,
+					"spd": mg_speed,
+					"group": "all",
+					"shooter_path": get_path(),
+					"radius": 0.0
+				}
+				spawner.spawn(data)
 	else:
-		get_tree().root.add_child(proj, true) # Fallback
-
-	proj.global_position = spawn_pos
-	proj.rotation = spawn_rot
-	
-	# Target "all" to hit both units and buildings (handled by modified Projectile.gd)
-	proj.setup(mg_damage, mg_speed, "all", self, 0.0)
+		var proj = PROJ_MG_SCENE.instantiate()
+		get_tree().root.add_child(proj)
+		proj.global_position = spawn_pos
+		proj.rotation = spawn_rot
+		proj.setup(mg_damage, mg_speed, "all", self, 0.0)
 
 func set_faction(new_faction: String) -> void:
 	faction = new_faction
