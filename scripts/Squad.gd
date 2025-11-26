@@ -30,7 +30,7 @@ func _ready() -> void:
 		# Only add spawner; allow it to auto-detect children added by authority
 		var troop_spawner = MultiplayerSpawner.new()
 		troop_spawner.name = "TroopSpawner"
-		troop_spawner.spawn_path = "." # Spawn as direct children
+		troop_spawner.spawn_path = ".." # Spawn as direct children of the Squad (Parent of Spawner)
 		troop_spawner.add_spawnable_scene("res://scenes/Troops/Types/Ranged.tscn")
 		troop_spawner.add_spawnable_scene("res://scenes/Troops/Types/Melee.tscn")
 		troop_spawner.add_spawnable_scene("res://scenes/Troops/Types/Rocket.tscn")
