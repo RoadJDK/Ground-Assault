@@ -2,9 +2,9 @@ extends Node2D
 
 class_name Squad
 
-@export var move_speed: float = 200.0  # 5x (was 40)
+@export var move_speed: float = 200.0
 @export var turn_speed: float = 3.0
-@export var spacing: float = 40.0      # 5x (was 8)
+@export var spacing: float = 40.0
 
 @onready var nav_agent: NavigationAgent2D = $NavigationAgent2D
 
@@ -13,12 +13,17 @@ var faction: String = "neutral"
 var unit_type: int = 0 
 
 func _ready() -> void:
-	nav_agent.path_desired_distance = 50.0   # Scaled up
+	nav_agent.path_desired_distance = 50.0
 	nav_agent.target_desired_distance = 50.0
 	await get_tree().physics_frame
 	_decide_next_target()
 
 func _physics_process(delta: float) -> void:
+	# Check integrity first to handle instant death
+	_check_integrity()
+	
+	if is_queued_for_deletion(): return
+
 	if nav_agent.is_navigation_finished():
 		_decide_next_target()
 		return
@@ -32,7 +37,6 @@ func _physics_process(delta: float) -> void:
 		rotation = rotate_toward(rotation, desired_angle, turn_speed * delta)
 	
 	global_position += new_velocity * delta
-	_check_integrity()
 
 func _decide_next_target() -> void:
 	var enemy_buildings = get_tree().get_nodes_in_group("building")
@@ -66,10 +70,8 @@ func setup_squad_formation(cols: int, rows: int) -> void:
 	
 	for x in range(cols):
 		for y in range(rows):
-			# Instantiating safely
 			var troop = troop_scene.instantiate()
 			add_child(troop)
-			
 			var pos_x = offset_start.x + (x * spacing)
 			var pos_y = offset_start.y + (y * spacing)
 			
@@ -82,14 +84,18 @@ func setup_squad_formation(cols: int, rows: int) -> void:
 			troop.setup(self, Vector2(pos_x, pos_y))
 
 func _pick_random_target() -> void:
-	# 5x Range for random wander
 	var random_offset = Vector2(randf_range(-2000, 2000), randf_range(-2000, 2000))
 	var target = global_position + random_offset
-	# Assuming map is ~5000x5000 now
-	target.x = clamp(target.x, 500, 5500)
-	target.y = clamp(target.y, 500, 3000)
+	target.x = clamp(target.x, -6500, 6500)
+	target.y = clamp(target.y, -4000, 4000)
 	nav_agent.target_position = target
 
 func _check_integrity() -> void:
-	if get_child_count() == 1:
+	# FIX: Explicitly count Troops instead of checking child count (which includes NavigationAgent, etc)
+	var troop_count = 0
+	for child in get_children():
+		if child is Troop:
+			troop_count += 1
+	
+	if troop_count == 0:
 		queue_free()

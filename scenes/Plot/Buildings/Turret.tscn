@@ -15,9 +15,10 @@ how_damage = 10
 how_range = 6000.0
 how_cooldown = 6.0
 how_speed = 625.0
+how_explosion_radius = 200.0
 
 [node name="ColorRect" parent="." index="1"]
-color = Color(0, 1, 0.18039216, 1)
+color = Color(3.9286724e-06, 0.35528824, 0.03659174, 1)
 
 [node name="Head" type="Node2D" parent="." index="2"]
 
@@ -26,20 +27,20 @@ offset_left = 15.0
 offset_top = -10.0
 offset_right = 45.0
 offset_bottom = -5.0
-color = Color(0, 0, 0, 1)
+color = Color(0.47843137, 0.47843137, 0.47843137, 1)
 
 [node name="Barrel" type="ColorRect" parent="Head" index="1"]
 offset_left = 15.0
 offset_right = 65.0
 offset_bottom = 10.0
-color = Color(0, 0, 0, 1)
+color = Color(0.47788018, 0.47788012, 0.47788012, 1)
 
 [node name="ColorRect" type="ColorRect" parent="Head" index="2"]
 offset_left = -15.0
 offset_top = -15.0
 offset_right = 15.0
 offset_bottom = 15.0
-color = Color(0, 0, 0, 1)
+color = Color(0.47843137, 0.47843137, 0.47843137, 1)
 
 [node name="MuzzleMG" type="Marker2D" parent="Head" index="3"]
 position = Vector2(65, 0)

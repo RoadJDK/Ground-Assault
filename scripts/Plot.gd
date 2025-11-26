@@ -2,7 +2,6 @@ extends Node2D
 
 var building_instance: Node2D = null
 var _visual_rect: ColorRect = null
-var _line_container: Node2D = null
 
 # --- STATE ---
 var is_buildable: bool = false
@@ -17,19 +16,19 @@ const CORE_SCENE = preload("res://scenes/Plot/Buildings/Core.tscn")
 signal plot_selected(plot_node)
 
 func _ready() -> void:
-	# 1. Setup Visual Rect (Keep it visible this time)
 	for child in get_children():
 		if child is ColorRect:
 			_visual_rect = child
 			_visual_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			_visual_rect.color = Color(0.2, 0.2, 0.2)
+			# Make sure it's visible
+			_visual_rect.visible = true
+			# CRITICAL FIX: Draw the ColorRect BEHIND the parent's _draw() content
+			_visual_rect.show_behind_parent = true
+			# Initialize color
+			_visual_rect.color = Color(0.15, 0.15, 0.15)
 			break
 	
-	# 2. Setup Line Container (On top of everything)
-	_line_container = Node2D.new()
-	_line_container.name = "Lines"
-	_line_container.z_index = 5 # Ensure lines are always on top
-	add_child(_line_container)
+	queue_redraw()
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -40,11 +39,30 @@ func _input(event: InputEvent) -> void:
 				
 			elif event.button_index == MOUSE_BUTTON_RIGHT:
 				get_viewport().set_input_as_handled()
+				
+				if building_instance == null:
+					return
+				
+				# Check Range before selling
+				var players = get_tree().get_nodes_in_group("unit") # Players are in group "unit"
+				var active_player = null
+				for p in players:
+					if p.name.begins_with("Player") and "is_active" in p and p.is_active:
+						active_player = p
+						break
+				
+				if active_player:
+					if active_player.global_position.distance_to(global_position) > 1000.0:
+						print("Too far to sell!")
+						if active_player.has_method("show_range_indicator"):
+							active_player.show_range_indicator()
+						return
+
 				_sell_building()
 
 func set_buildable_status(buildable: bool, targets: Array) -> void:
-	# Robust check to avoid unnecessary updates
 	var needs_update = is_buildable != buildable
+	
 	if not needs_update:
 		if connection_targets.size() != targets.size():
 			needs_update = true
@@ -59,30 +77,9 @@ func set_buildable_status(buildable: bool, targets: Array) -> void:
 		connection_targets.clear()
 		connection_targets.append_array(targets)
 		
+		# Update color when status changes
 		_update_plot_color("neutral")
-		_update_lines() # Update the physical Line2D nodes
-
-func _update_lines() -> void:
-	# Clear old lines
-	for child in _line_container.get_children():
-		child.queue_free()
-	
-	if not _visual_rect: return
-	
-	# Create new lines if we have targets
-	if not connection_targets.is_empty():
-		var start = _visual_rect.position + _visual_rect.size / 2.0
-		
-		for target in connection_targets:
-			var end = to_local(target)
-			
-			var line = Line2D.new()
-			line.default_color = Color.WHITE
-			line.width = 6.0
-			line.antialiased = true
-			line.add_point(start)
-			line.add_point(end)
-			_line_container.add_child(line)
+		queue_redraw()
 
 func can_build_here() -> bool:
 	return is_buildable and building_instance == null
@@ -92,7 +89,6 @@ func build_specific_building(type_name: String, faction: String, unit_type: int 
 		print("Plot occupied! Sell existing building first.")
 		return
 		
-	# Core bypasses check
 	if type_name != "Core" and not is_buildable:
 		print("Plot is not valid (must be one of the 3 nearest)!")
 		return
@@ -135,9 +131,7 @@ func _replace_building(scene: PackedScene, faction: String, unit_type: int) -> v
 	else:
 		new_building.position = Vector2(32, 32)
 	
-	# Clear lines when built
-	connection_targets.clear()
-	_update_lines()
+	queue_redraw()
 
 func _sell_building() -> void:
 	if building_instance:
@@ -148,7 +142,7 @@ func _sell_building() -> void:
 		building_instance.queue_free()
 		building_instance = null
 		_update_plot_color("neutral")
-		_update_lines()
+		queue_redraw()
 
 func _on_building_destroyed() -> void:
 	call_deferred("_check_reset_color")
@@ -174,4 +168,19 @@ func _update_plot_color(faction: String) -> void:
 		if is_buildable:
 			_visual_rect.color = Color.WHITE
 		else:
-			_visual_rect.color = Color(0.2, 0.2, 0.2)
+			_visual_rect.color = Color(0.15, 0.15, 0.15)
+
+func _draw() -> void:
+	# Only draw the lines. Background is handled by ColorRect.
+	
+	if not connection_targets.is_empty():
+		# Calculate center of the plot
+		var center = Vector2.ZERO
+		if _visual_rect:
+			center = _visual_rect.position + _visual_rect.size / 2.0
+		else:
+			center = Vector2(32, 32) # Fallback
+			
+		for target in connection_targets:
+			var end = to_local(target)
+			draw_line(center, end, Color.WHITE, 7.0, true)

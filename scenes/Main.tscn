@@ -1,13 +1,15 @@
-[gd_scene load_steps=6 format=3 uid="uid://iqsseseehi4w"]
+[gd_scene load_steps=7 format=3 uid="uid://iqsseseehi4w"]
 
 [ext_resource type="Script" uid="uid://cdueyeiye3p5e" path="res://scripts/CameraControl.gd" id="1_0bbpv"]
 [ext_resource type="Script" uid="uid://nkiownn8xb1i" path="res://scripts/Main.gd" id="1_rarhs"]
 [ext_resource type="PackedScene" uid="uid://udsjaawykctm" path="res://scenes/UI/GameUI.tscn" id="4_rarhs"]
+[ext_resource type="PackedScene" uid="uid://pe20yx7wsrtf" path="res://scenes/Player/Player.tscn" id="4_vcsgt"]
 
 [sub_resource type="NavigationPolygon" id="NavigationPolygon_0bbpv"]
-vertices = PackedVector2Array(6934, -3556, 6934, 4123.992, -6203.0234, 4099, -6237.9688, -3580.9922)
+vertices = PackedVector2Array(6929, -3551.0078, 6929, 4118.9688, -6224.008, 4083.0234, -6232.9766, -3575.9766)
 polygons = Array[PackedInt32Array]([PackedInt32Array(0, 1, 2, 3)])
-outlines = Array[PackedVector2Array]([PackedVector2Array(-6243, -3586, -6188, 4277, 6939, 4129, 6939, -3561)])
+outlines = Array[PackedVector2Array]([PackedVector2Array(-6243, -3586, -6234, 4093, 6939, 4129, 6939, -3561)])
+agent_radius = 5.0
 
 [sub_resource type="Environment" id="Environment_rarhs"]
 background_mode = 3
@@ -23,6 +25,7 @@ adjustment_enabled = true
 script = ExtResource("1_rarhs")
 
 [node name="Camera2D" type="Camera2D" parent="."]
+enabled = false
 zoom = Vector2(0.2, 0.2)
 position_smoothing_enabled = true
 position_smoothing_speed = 30.0
@@ -42,3 +45,9 @@ navigation_polygon = SubResource("NavigationPolygon_0bbpv")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_rarhs")
+
+[node name="PlayerBlue" parent="." instance=ExtResource("4_vcsgt")]
+position = Vector2(-5145, 17)
+
+[node name="PlayerRed" parent="." instance=ExtResource("4_vcsgt")]
+position = Vector2(5869, -32)

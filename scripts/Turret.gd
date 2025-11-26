@@ -52,8 +52,20 @@ func _process(delta: float) -> void:
 		_fire_howitzer()
 
 func _get_predicted_position(target: Node2D, bullet_speed: float) -> Vector2:
+	# 1. Initial guess
 	var dist = global_position.distance_to(target.global_position)
 	var time_to_hit = dist / bullet_speed
+	
+	# 2. Iterative refinement (3 passes)
+	for i in range(3):
+		var predicted_pos = target.global_position
+		if "velocity" in target:
+			predicted_pos += target.velocity * time_to_hit
+		
+		dist = global_position.distance_to(predicted_pos)
+		time_to_hit = dist / bullet_speed
+	
+	# 3. Final Calculation
 	if "velocity" in target:
 		return target.global_position + (target.velocity * time_to_hit)
 	return target.global_position
@@ -63,6 +75,8 @@ func _find_nearest_unit() -> void:
 	var nearest: Node2D = null
 	var min_dist = mg_range
 	for unit in units:
+		# Player targeting enabled again
+		
 		if "faction" in unit and unit.faction == self.faction:
 			continue
 		var dist = global_position.distance_to(unit.global_position)

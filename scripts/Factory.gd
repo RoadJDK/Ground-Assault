@@ -6,7 +6,7 @@ const SQUAD_SCENE = preload("res://scenes/Troops/Squad.tscn")
 
 var unit_type: int = 0 
 var current_squad: Node2D = null
-var is_squad_active: bool = false # Explicit flag to prevent race conditions
+var is_squad_active: bool = false 
 
 func _ready() -> void:
 	super._ready()
@@ -20,10 +20,32 @@ func set_unit_type(type_val: int) -> void:
 	unit_type = type_val
 
 func _on_timer_timeout() -> void:
-	spawn_squad()
+	if _check_safe_spawn():
+		spawn_squad()
+	else:
+		# Wait another cycle if enemies are nearby
+		spawn_timer.start(10.0)
+
+func _check_safe_spawn() -> bool:
+	var check_radius = 1500.0
+	
+	# Check Enemy Units
+	var units = get_tree().get_nodes_in_group("unit")
+	for u in units:
+		if "faction" in u and u.faction != faction and u.faction != "neutral":
+			if global_position.distance_to(u.global_position) < check_radius:
+				return false
+				
+	# Check Enemy Buildings (Turrets, etc.)
+	var buildings = get_tree().get_nodes_in_group("building")
+	for b in buildings:
+		if "faction" in b and b.faction != faction and b.faction != "neutral":
+			if global_position.distance_to(b.global_position) < check_radius:
+				return false
+				
+	return true
 
 func spawn_squad() -> void:
-	# Check explicit flag AND instance validity for safety
 	if is_squad_active and is_instance_valid(current_squad):
 		return
 
@@ -51,9 +73,8 @@ func spawn_squad() -> void:
 		print("Factory Error: Could not find Map.")
 
 func _on_squad_destroyed() -> void:
-	# Immediately mark as inactive so the next spawn attempt works
 	is_squad_active = false
 	current_squad = null
 	
-	# Try to spawn replacements immediately
-	call_deferred("spawn_squad")
+	# Start timer to try respawn (checks safety on timeout)
+	spawn_timer.start(1.0) # Short initial delay, then 10s loops if blocked

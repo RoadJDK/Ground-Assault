@@ -30,6 +30,7 @@ var squeeze_weight: float = 0.0
 
 # Combat State
 var target_enemy: Node2D = null
+var nearby_enemies: Array[Node2D] = [] 
 var attack_timer: float = 0.0
 var scan_timer: float = 0.0
 var projectile_scene: PackedScene = null
@@ -43,6 +44,9 @@ var recoil_velocity: Vector2 = Vector2.ZERO
 # Visuals
 var _color: Color = Color.WHITE
 
+# DEBUG FLAG
+var is_debug_unit: bool = false
+
 func _ready() -> void:
 	current_hp = max_hp
 	noise_seed = Vector2(randf(), randf()) * 10.0
@@ -55,6 +59,11 @@ func _ready() -> void:
 	
 	# Apply color once ready to ensure children exist
 	_apply_faction_color()
+	
+	# SETUP DEBUG: Only track the FIRST child of a BLUE squad
+	await get_tree().process_frame # Wait for parent assignment
+	if faction == "blue" and get_parent().get_child_count() > 0 and get_parent().get_child(0) == self:
+		is_debug_unit = true
 
 func setup(leader: Node2D, offset: Vector2) -> void:
 	squad_leader = leader
@@ -65,28 +74,28 @@ func _setup_type_attributes() -> void:
 	match unit_type:
 		UnitType.RANGED:
 			damage = 1
-			attack_range = 750.0      
+			attack_range = 1125.0      
 			attack_cooldown = 0.8
 			max_hp = 20
 			base_speed = 325.0
 			attack_speed = 2000.0
-			explosion_radius = 20.0 # Small splash for MG
+			explosion_radius = 20.0 
 			projectile_scene = load("res://scenes/Projectiles/ProjectileMG.tscn")
 		UnitType.MELEE:
 			damage = 2
-			attack_range = 125.0      
+			attack_range = 187.5      
 			attack_cooldown = 0.5
 			max_hp = 40
 			base_speed = 400.0
 			explosion_radius = 0.0
 		UnitType.ROCKET:
 			damage = 4 
-			attack_range = 1250.0     
+			attack_range = 1875.0     
 			attack_cooldown = 6.0 
 			max_hp = 30
 			base_speed = 275.0
 			attack_speed = 1000.0 
-			explosion_radius = 200.0 # Large splash for Rockets
+			explosion_radius = 200.0 
 			projectile_scene = load("res://scenes/Projectiles/ProjectileHowitzer.tscn")
 	current_hp = max_hp
 
@@ -130,12 +139,15 @@ func _handle_combat(delta: float) -> void:
 	if attack_timer > 0: attack_timer -= delta
 	scan_timer -= delta
 	
+	if target_enemy != null and not is_instance_valid(target_enemy):
+		target_enemy = null
+		_select_next_target() 
+	
 	if scan_timer <= 0:
-		scan_timer = 0.5 
-		_find_target()
+		scan_timer = 0.15
+		_scan_for_enemies()
 	
 	if is_instance_valid(target_enemy):
-		# Adjust distance check for building size
 		var dist = global_position.distance_to(target_enemy.global_position)
 		var target_radius = 0.0
 		if target_enemy.is_in_group("building"):
@@ -143,46 +155,58 @@ func _handle_combat(delta: float) -> void:
 		
 		var effective_dist = dist - target_radius
 		
-		# Movement logic decides when to stop, here we just check if we CAN fire
-		# Check Shield Penetration
+		# Stop chasing if too far (De-aggro)
+		if effective_dist > attack_range * 1.5:
+			target_enemy = null
+			return
+		
 		var shield = _get_protecting_shield(target_enemy)
 		var required_dist = attack_range * engagement_variance
 		
-		# If target is shielded, we MUST be inside the shield (e.g. < 600) to fire
 		if shield:
 			required_dist = 600.0
 		
-		# Allow small buffer
-		var can_attack = (effective_dist <= required_dist + 10.0)
-		
-		if can_attack:
+		if effective_dist <= required_dist + 10.0:
 			if attack_timer <= 0:
 				_attack_target()
-		else:
-			if effective_dist > attack_range * 1.5:
-				target_enemy = null 
 
-func _find_target() -> void:
-	var enemy_units = get_tree().get_nodes_in_group("unit")
-	var nearest: Node2D = null
-	var min_dist = 3000.0
+func _scan_for_enemies() -> void:
+	nearby_enemies.clear()
 	
+	var scan_radius = 4500.0 
+	
+	var enemy_units = get_tree().get_nodes_in_group("unit")
 	for u in enemy_units:
+		# Removed Player check to allow targeting
+		
 		if "faction" in u and u.faction != faction and u.faction != "neutral":
 			var dist = global_position.distance_to(u.global_position)
-			if dist < min_dist:
-				min_dist = dist
-				nearest = u
+			if dist < scan_radius:
+				nearby_enemies.append(u)
 	
-	if nearest == null:
-		var enemy_buildings = get_tree().get_nodes_in_group("building")
-		for b in enemy_buildings:
-			if "faction" in b and b.faction != faction and b.faction != "neutral":
-				var dist = global_position.distance_to(b.global_position)
-				if dist < min_dist:
-					min_dist = dist
-					nearest = b
-	target_enemy = nearest
+	var enemy_buildings = get_tree().get_nodes_in_group("building")
+	for b in enemy_buildings:
+		if "faction" in b and b.faction != faction and b.faction != "neutral":
+			var dist = global_position.distance_to(b.global_position)
+			if dist < scan_radius:
+				nearby_enemies.append(b)
+	
+	nearby_enemies.sort_custom(func(a, b): 
+		return global_position.distance_to(a.global_position) < global_position.distance_to(b.global_position)
+	)
+	
+	if not is_instance_valid(target_enemy) and not nearby_enemies.is_empty():
+		target_enemy = nearby_enemies[0]
+
+func _select_next_target() -> void:
+	target_enemy = null
+	for candidate in nearby_enemies:
+		if is_instance_valid(candidate):
+			target_enemy = candidate
+			break
+	
+	if target_enemy == null:
+		_scan_for_enemies()
 
 func _attack_target() -> void:
 	attack_timer = attack_cooldown
@@ -196,7 +220,6 @@ func _attack_target() -> void:
 			get_tree().root.add_child(proj)
 			proj.global_position = global_position
 			
-			# PREDICTION LOGIC
 			var aim_pos = _get_predicted_position(target_enemy, attack_speed)
 			var dir = (aim_pos - global_position).angle()
 			proj.rotation = dir
@@ -204,23 +227,34 @@ func _attack_target() -> void:
 			var target_group = "unit"
 			if target_enemy.is_in_group("building"): target_group = "building"
 			
-			# PASS EXPLOSION RADIUS HERE
 			proj.setup(damage, attack_speed, target_group, self, explosion_radius)
 			
-			# KNOCKBACK RECOIL
 			if unit_type == UnitType.ROCKET:
 				var recoil_dir = (global_position - target_enemy.global_position).normalized()
 				recoil_velocity = recoil_dir * 900.0 
 
 func _get_predicted_position(target: Node2D, bullet_speed: float) -> Vector2:
+	# 1. Initial guess
 	var dist = global_position.distance_to(target.global_position)
 	var time_to_hit = dist / bullet_speed
+	
+	# 2. Iterative refinement (3 passes)
+	for i in range(3):
+		var predicted_pos = target.global_position
+		if "velocity" in target:
+			predicted_pos += target.velocity * time_to_hit
+		
+		dist = global_position.distance_to(predicted_pos)
+		time_to_hit = dist / bullet_speed
+	
+	# 3. Final Calculation
 	if "velocity" in target:
 		return target.global_position + (target.velocity * time_to_hit)
 	return target.global_position
 
 func _handle_movement(delta: float) -> void:
-	var desired_velocity = Vector2.ZERO
+	var move_velocity = Vector2.ZERO
+	var holding_ground = false
 	
 	# 1. COMBAT MOVEMENT
 	if is_instance_valid(target_enemy):
@@ -229,23 +263,18 @@ func _handle_movement(delta: float) -> void:
 		if target_enemy.is_in_group("building"): target_radius = 250.0
 		var effective_dist = dist - target_radius
 		
-		if unit_type == UnitType.MELEE:
-			var vec = target_enemy.global_position - global_position
-			desired_velocity = vec.normalized() * base_speed
+		var threshold = attack_range * engagement_variance
+		var shield = _get_protecting_shield(target_enemy)
+		if shield:
+			threshold = 600.0 
+		
+		# Combat Logic
+		if effective_dist <= threshold:
+			move_velocity = Vector2.ZERO
+			holding_ground = true # STOP and HOLD
 		else:
-			var threshold = attack_range * engagement_variance
-			
-			# SHIELD PENETRATION LOGIC
-			var shield = _get_protecting_shield(target_enemy)
-			if shield:
-				threshold = 600.0 
-			
-			if effective_dist <= threshold:
-				# STOP.
-				desired_velocity = Vector2.ZERO
-			else:
-				var vec = target_enemy.global_position - global_position
-				desired_velocity = vec.normalized() * base_speed
+			var vec = target_enemy.global_position - global_position
+			move_velocity = vec.normalized() * base_speed
 	
 	# 2. FORMATION MOVEMENT
 	else:
@@ -268,14 +297,19 @@ func _handle_movement(delta: float) -> void:
 		if distance > 2.0:
 			var speed_mult = 1.0
 			if distance > 60.0: speed_mult = 1.2
-			desired_velocity = vector_to_target.normalized() * base_speed * speed_mult
+			move_velocity = vector_to_target.normalized() * base_speed * speed_mult
 	
 	# 3. SEPARATION FORCE
+	var separation = Vector2.ZERO
 	if recoil_velocity.length() < 10.0:
-		var separation = _calculate_separation_force()
-		desired_velocity += separation * 250.0 
+		# FIX: If holding ground (attacking), Disable separation completely (strength = 0)
+		if holding_ground:
+			separation = Vector2.ZERO
+		else:
+			separation = _calculate_separation_force()
+			move_velocity += separation * 250.0
 
-	velocity = desired_velocity + recoil_velocity
+	velocity = move_velocity + recoil_velocity
 	move_and_slide()
 
 func _calculate_separation_force() -> Vector2:

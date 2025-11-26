@@ -9,14 +9,14 @@ var explosion_radius: float = 0.0
 
 var _exploded: bool = false
 
-@export var collide_with_walls: bool = false 
+@export var collide_with_walls: bool = true 
 
 func _ready() -> void:
 	monitoring = true
 	monitorable = true
-	collision_mask = 1 + 2 + 4 + 8 
+	collision_mask = 1 + 2 + 4 + 8 + 16 # Added layer 16 for obstacles? Or rely on physics mask.
 	z_index = 50 
-
+	
 func setup(dmg: int, spd: float, group: String, source_node: Node2D = null, radius: float = 0.0) -> void:
 	damage = dmg
 	speed = spd
@@ -40,8 +40,9 @@ func _on_body_entered(body: Node) -> void:
 	
 	if _is_valid_target(body):
 		_trigger_impact(body)
-	elif collide_with_walls and (body is TileMap or body is StaticBody2D):
-		_trigger_impact(null)
+	elif collide_with_walls:
+		if body is TileMap or body is StaticBody2D or body.is_in_group("obstacle"):
+			_trigger_impact(null)
 
 func _on_area_entered(area: Node) -> void:
 	if _exploded: return
@@ -61,8 +62,11 @@ func _is_valid_target(node: Node) -> bool:
 	if node == shooter: return false
 	if node.is_in_group("projectile"): return false
 	
-	if not node.is_in_group(target_group): return false
+	# Allow "all" to hit anything (that isn't excluded by other rules)
+	if target_group != "all":
+		if not node.is_in_group(target_group): return false
 	
+	# Friendly Fire Check
 	if shooter and "faction" in shooter and "faction" in node:
 		if shooter.faction == node.faction:
 			return false
