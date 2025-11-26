@@ -204,6 +204,8 @@ func _spawn_single_plot(pos: Vector2, building_type: String = "", faction: Strin
 	
 	if building_type != "":
 		p.call_deferred("build_specific_building", building_type, faction)
+	
+	p.building_built.connect(_on_building_built)
 
 func _spawn_plots_in_zone(count: int, x_min: float, x_max: float, y_min: float, y_max: float) -> void:
 	var attempts_per_plot = 50
@@ -227,6 +229,7 @@ func _spawn_plots_in_zone(count: int, x_min: float, x_max: float, y_min: float, 
 			parent_node.add_child(p)
 			p.global_position = safe_pos
 			p.add_to_group("build_pad")
+			p.building_built.connect(_on_building_built)
 			generated_plots.append(p)
 
 func _is_position_valid(pos: Vector2) -> bool:
@@ -234,6 +237,12 @@ func _is_position_valid(pos: Vector2) -> bool:
 		if pos.distance_to(existing.global_position) < MIN_PLOT_DIST:
 			return false
 	return true
+
+func _on_building_built(type_name: String, faction: String) -> void:
+	var cost = building_costs.get(type_name, 0)
+	if faction in faction_gold:
+		faction_gold[faction] -= cost
+		_update_gold_ui()
 
 func _update_plot_availability() -> void:
 	# 1. Gather Data
@@ -424,8 +433,7 @@ func _on_plot_clicked(plot_node) -> void:
 		
 		if current_gold >= cost:
 			if plot_node.can_build_here():
-				faction_gold[current_build_faction] -= cost
-				_update_gold_ui()
+				# Deduction happens via signal from plot
 				plot_node.build_specific_building(selected_building_tool, current_build_faction, current_unit_type)
 			else:
 				print("Cannot build here!")

@@ -14,6 +14,7 @@ const SHIELD_SCENE = preload("res://scenes/Plot/Buildings/Shield.tscn")
 const CORE_SCENE = preload("res://scenes/Plot/Buildings/Core.tscn")
 
 signal plot_selected(plot_node)
+signal building_built(type_name, faction)
 
 func _ready() -> void:
 	for child in get_children():
@@ -85,13 +86,22 @@ func can_build_here() -> bool:
 	return is_buildable and building_instance == null
 
 func build_specific_building(type_name: String, faction: String, unit_type: int = 0) -> void:
+	if GameManager.is_multiplayer:
+		rpc("build_building_rpc", type_name, faction, unit_type)
+	else:
+		build_building_rpc(type_name, faction, unit_type)
+
+@rpc("call_local")
+func build_building_rpc(type_name: String, faction: String, unit_type: int) -> void:
 	if building_instance != null:
-		print("Plot occupied! Sell existing building first.")
-		return
-		
+		# Just for safety, though logic usually prevents this
+		# In mp, a race condition could occur, so we check again
+		if building_instance.name != "Core": # Never replace core
+			building_instance.queue_free() 
+
 	if type_name != "Core" and not is_buildable:
-		print("Plot is not valid (must be one of the 3 nearest)!")
-		return
+		# Allow syncing even if local client thinks it's not buildable (Host Authority prevails usually, but here we trust the caller for now or it gets desynced visually)
+		pass
 
 	var scene_to_build: PackedScene = null
 	match type_name:
@@ -102,11 +112,14 @@ func build_specific_building(type_name: String, faction: String, unit_type: int 
 		"Core": scene_to_build = CORE_SCENE
 	
 	if scene_to_build:
-		_replace_building(scene_to_build, faction, unit_type)
+		_replace_building(scene_to_build, type_name, faction, unit_type)
 
-func _replace_building(scene: PackedScene, faction: String, unit_type: int) -> void:
+func _replace_building(scene: PackedScene, type_name: String, faction: String, unit_type: int) -> void:
 	if building_instance:
 		building_instance.queue_free()
+	
+	# Emit signal so Main can deduct gold
+	building_built.emit(type_name, faction)
 	
 	var new_building = scene.instantiate()
 	new_building.z_index = 10 

@@ -287,6 +287,13 @@ func set_active(active: bool) -> void:
 				camera.zoom = _target_zoom
 
 func take_damage(amount: int) -> void:
+	if GameManager.is_multiplayer:
+		rpc("rpc_take_damage", amount)
+	else:
+		rpc_take_damage(amount)
+
+@rpc("any_peer", "call_local")
+func rpc_take_damage(amount: int) -> void:
 	current_hp -= amount
 	print(name, " took damage: ", amount, " | HP: ", current_hp)
 	

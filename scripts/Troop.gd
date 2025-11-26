@@ -55,7 +55,28 @@ func _ready() -> void:
 	top_level = true 
 	add_to_group("unit")
 	
+	# --- NETWORK SYNC ---
+	if GameManager.is_multiplayer:
+		var sync = MultiplayerSynchronizer.new()
+		sync.name = "MultiplayerSynchronizer"
+		add_child(sync)
+		
+		var config = SceneReplicationConfig.new()
+		config.add_property("." + ":position")
+		config.add_property("." + ":rotation")
+		sync.replication_config = config
+		
+		# Determine Authority:
+		# Troops are usually spawned by Squads/Buildings. 
+		# If we want simple logic: Host owns all AI.
+		# OR: Spawner sets authority. 
+		# For now, let's assume Host owns AI for simplicity unless assigned otherwise.
+		# We'll let the Spawner (Factory/Squad) set the authority, but default to 1 here just in case.
+	
 	_setup_type_attributes()
+	
+	# Speed up!
+	base_speed *= 1.5 
 	
 	# Apply color once ready to ensure children exist
 	_apply_faction_color()
@@ -114,6 +135,9 @@ func _color_all_children(node: Node, col: Color) -> void:
 			_color_all_children(child, col)
 
 func _physics_process(delta: float) -> void:
+	if GameManager.is_multiplayer and not is_multiplayer_authority():
+		return # Client just interpolates (handled by Sync)
+
 	if not is_instance_valid(squad_leader):
 		queue_free()
 		return
@@ -348,6 +372,13 @@ func _get_protecting_shield(target: Node2D) -> Node2D:
 	return null
 
 func take_damage(amount: int) -> void:
+	if GameManager.is_multiplayer:
+		rpc("rpc_take_damage", amount)
+	else:
+		rpc_take_damage(amount)
+
+@rpc("any_peer", "call_local")
+func rpc_take_damage(amount: int) -> void:
 	current_hp -= amount
 	if current_hp <= 0:
 		queue_free()

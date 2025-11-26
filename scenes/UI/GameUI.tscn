@@ -40,6 +40,9 @@ text = "Shield 80g"
 [node name="UnitLabel" type="Label" parent="BuildMenu/HBoxContainer"]
 layout_mode = 2
 
+[node name="FPSLabel" type="Label" parent="BuildMenu"]
+layout_mode = 2
+
 [connection signal="pressed" from="BuildMenu/HBoxContainer/BtnGenerator" to="." method="_on_btn_generator_pressed"]
 [connection signal="pressed" from="BuildMenu/HBoxContainer/BtnTurret" to="." method="_on_btn_turret_pressed"]
 [connection signal="pressed" from="BuildMenu/HBoxContainer/BtnFactory" to="." method="_on_btn_factory_pressed"]

@@ -14,6 +14,12 @@ signal build_requested(building_type)
 @onready var btn_factory = find_child("BtnFactory", true, false)
 @onready var btn_shield = find_child("BtnShield", true, false)
 
+@onready var fps_label = find_child("FPSLabel", true, false)
+
+func _process(delta: float) -> void:
+	if fps_label:
+		fps_label.text = "FPS: " + str(Engine.get_frames_per_second())
+
 func _ready() -> void:
 	# Initialize labels if they exist
 	if unit_label:

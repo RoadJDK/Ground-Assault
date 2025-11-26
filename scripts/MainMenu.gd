@@ -28,7 +28,15 @@ func show_multi_menu():
 	
 	var ip_input = LineEdit.new()
 	ip_input.placeholder_text = "Enter IP (Default 127.0.0.1)"
-	ip_input.text = "127.0.0.1"
+	
+	# Find local IPv4
+	var local_ip = "127.0.0.1"
+	for addr in IP.get_local_addresses():
+		if addr.begins_with("192.") or addr.begins_with("10."):
+			local_ip = addr
+			break
+			
+	ip_input.text = local_ip 
 	ip_input.custom_minimum_size.y = 50
 	vbox.add_child(ip_input)
 	

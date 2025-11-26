@@ -79,8 +79,11 @@ func _trigger_impact(direct_hit_target: Node) -> void:
 	if explosion_radius > 0:
 		_explode()
 	else:
-		if direct_hit_target:
-			direct_hit_target.take_damage(damage)
+		# Only deal damage if we own the shooter (or it's singleplayer)
+		if _should_deal_damage():
+			if direct_hit_target:
+				direct_hit_target.take_damage(damage)
+		
 		queue_free()
 
 func _explode() -> void:
@@ -98,19 +101,20 @@ func _explode() -> void:
 			child.hide()
 	
 	# 3. Deal Area Damage
-	var potential_targets = get_tree().get_nodes_in_group(target_group)
-	for t in potential_targets:
-		if not is_instance_valid(t): continue
-		
-		# Friendly fire check
-		if shooter and "faction" in shooter and "faction" in t:
-			if shooter.faction == t.faction:
-				continue
-				
-		var dist = global_position.distance_to(t.global_position)
-		if dist <= explosion_radius:
-			if t.has_method("take_damage"):
-				t.take_damage(damage)
+	if _should_deal_damage():
+		var potential_targets = get_tree().get_nodes_in_group(target_group)
+		for t in potential_targets:
+			if not is_instance_valid(t): continue
+			
+			# Friendly fire check
+			if shooter and "faction" in shooter and "faction" in t:
+				if shooter.faction == t.faction:
+					continue
+					
+			var dist = global_position.distance_to(t.global_position)
+			if dist <= explosion_radius:
+				if t.has_method("take_damage"):
+					t.take_damage(damage)
 	
 	# 4. Visual Feedback
 	queue_redraw()
@@ -118,6 +122,11 @@ func _explode() -> void:
 	# 5. Wait and Delete
 	await get_tree().create_timer(0.2).timeout
 	queue_free()
+
+func _should_deal_damage() -> bool:
+	if not GameManager.is_multiplayer: return true
+	if shooter and shooter.is_multiplayer_authority(): return true
+	return false
 
 func _draw() -> void:
 	if _exploded and explosion_radius > 0:
