@@ -49,11 +49,12 @@ func spawn_squad() -> void:
 	if is_squad_active and is_instance_valid(current_squad):
 		return
 
-	var map_node = get_tree().root.find_child("Map", true, false)
+	# Find the container we created in Main.gd
+	var unit_container = get_tree().root.find_child("UnitContainer", true, false)
 	
-	if map_node:
+	if unit_container:
 		var squad = SQUAD_SCENE.instantiate()
-		map_node.add_child(squad)
+		unit_container.add_child(squad)
 		squad.global_position = global_position
 		
 		current_squad = squad
@@ -70,7 +71,7 @@ func spawn_squad() -> void:
 			
 		squad.setup_squad_formation(4, 6) 
 	else:
-		print("Factory Error: Could not find Map.")
+		print("Factory Error: Could not find UnitContainer.")
 
 func _on_squad_destroyed() -> void:
 	is_squad_active = false

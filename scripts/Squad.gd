@@ -13,12 +13,28 @@ var faction: String = "neutral"
 var unit_type: int = 0 
 
 func _ready() -> void:
+	# --- NETWORK SYNC ---
+	if GameManager.is_multiplayer:
+		var sync = MultiplayerSynchronizer.new()
+		sync.name = "MultiplayerSynchronizer"
+		sync.replication_interval = 0.016
+		sync.delta_interval = 0.016
+		add_child(sync)
+		
+		var config = SceneReplicationConfig.new()
+		config.add_property("." + ":position")
+		config.add_property("." + ":rotation")
+		sync.replication_config = config
+
 	nav_agent.path_desired_distance = 50.0
 	nav_agent.target_desired_distance = 50.0
 	await get_tree().physics_frame
 	_decide_next_target()
 
 func _physics_process(delta: float) -> void:
+	if GameManager.is_multiplayer and not is_multiplayer_authority():
+		return # Client just interpolates Squad position
+
 	# Check integrity first to handle instant death
 	_check_integrity()
 	

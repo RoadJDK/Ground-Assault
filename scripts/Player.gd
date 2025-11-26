@@ -49,14 +49,13 @@ func _ready() -> void:
 	if GameManager.is_multiplayer:
 		var sync = MultiplayerSynchronizer.new()
 		sync.name = "MultiplayerSynchronizer"
+		sync.replication_interval = 0.016 # Roughly 60 times per second
+		sync.delta_interval = 0.016
 		add_child(sync)
 		
 		var config = SceneReplicationConfig.new()
 		config.add_property("." + ":position")
 		config.add_property("." + ":rotation")
-		# If we want to sync velocity for smoother interpolation, we can
-		# But position/rotation is the absolute minimum
-		
 		sync.replication_config = config
 	
 	# Find Camera
@@ -257,7 +256,13 @@ func shoot_mg_action() -> void:
 	spawn_rot += randf_range(-spread_amount, spread_amount)
 	
 	var proj = PROJ_MG_SCENE.instantiate()
-	get_tree().root.add_child(proj)
+	
+	var container = get_tree().root.find_child("ProjectileContainer", true, false)
+	if container:
+		container.add_child(proj)
+	else:
+		get_tree().root.add_child(proj) # Fallback
+
 	proj.global_position = spawn_pos
 	proj.rotation = spawn_rot
 	

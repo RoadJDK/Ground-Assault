@@ -60,6 +60,29 @@ func _ready() -> void:
 	else:
 		print("WARNING: NavigationRegion2D not found!")
 	
+	# --- MULTIPLAYER SPAWNERS ---
+	var unit_container = Node2D.new()
+	unit_container.name = "UnitContainer"
+	add_child(unit_container, true) # Force readable name
+	
+	var proj_container = Node2D.new()
+	proj_container.name = "ProjectileContainer"
+	add_child(proj_container, true)
+	
+	if GameManager.is_multiplayer:
+		var unit_spawner = MultiplayerSpawner.new()
+		unit_spawner.name = "UnitSpawner"
+		unit_spawner.spawn_path = unit_container.get_path()
+		unit_spawner.add_spawnable_scene("res://scenes/Troops/Squad.tscn")
+		add_child(unit_spawner)
+		
+		var proj_spawner = MultiplayerSpawner.new()
+		proj_spawner.name = "ProjectileSpawner"
+		proj_spawner.spawn_path = proj_container.get_path()
+		proj_spawner.add_spawnable_scene("res://scenes/Projectiles/ProjectileMG.tscn")
+		proj_spawner.add_spawnable_scene("res://scenes/Projectiles/ProjectileHowitzer.tscn")
+		add_child(proj_spawner)
+	
 	game_ui = find_child("GameUI", true, false)
 	if game_ui:
 		print("GameUI Found.")

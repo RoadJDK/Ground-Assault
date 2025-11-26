@@ -59,6 +59,8 @@ func _ready() -> void:
 	if GameManager.is_multiplayer:
 		var sync = MultiplayerSynchronizer.new()
 		sync.name = "MultiplayerSynchronizer"
+		sync.replication_interval = 0.016
+		sync.delta_interval = 0.016
 		add_child(sync)
 		
 		var config = SceneReplicationConfig.new()
@@ -241,7 +243,13 @@ func _attack_target() -> void:
 	else:
 		if projectile_scene:
 			var proj = projectile_scene.instantiate()
-			get_tree().root.add_child(proj)
+			
+			var container = get_tree().root.find_child("ProjectileContainer", true, false)
+			if container:
+				container.add_child(proj)
+			else:
+				get_tree().root.add_child(proj) # Fallback
+				
 			proj.global_position = global_position
 			
 			var aim_pos = _get_predicted_position(target_enemy, attack_speed)
