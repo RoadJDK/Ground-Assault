@@ -45,6 +45,20 @@ func _ready() -> void:
 	add_to_group("unit")
 	current_hp = max_hp
 	
+	# --- NETWORKING ---
+	if GameManager.is_multiplayer:
+		var sync = MultiplayerSynchronizer.new()
+		sync.name = "MultiplayerSynchronizer"
+		add_child(sync)
+		
+		var config = SceneReplicationConfig.new()
+		config.add_property("." + ":position")
+		config.add_property("." + ":rotation")
+		# If we want to sync velocity for smoother interpolation, we can
+		# But position/rotation is the absolute minimum
+		
+		sync.replication_config = config
+	
 	# Find Camera
 	camera = find_child("Camera2D", true, false)
 	if camera:
@@ -62,6 +76,13 @@ func _ready() -> void:
 	weapon_node = find_child("Weapon", true, false)
 
 func _physics_process(delta: float) -> void:
+	if GameManager.is_multiplayer:
+		if not is_multiplayer_authority():
+			# We are a remote puppet. 
+			# Position is synced automatically by MultiplayerSynchronizer.
+			# We just ensure we don't override it with local physics or camera logic
+			return 
+
 	if _show_range_timer > 0:
 		_show_range_timer -= delta
 		queue_redraw()
@@ -142,6 +163,9 @@ func _draw() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_active: return
+	
+	if GameManager.is_multiplayer and not is_multiplayer_authority():
+		return # Ignore inputs if not mine
 
 	if event is InputEventMouseButton:
 		if _is_zoomed_out:
@@ -199,6 +223,13 @@ func _toggle_zoom_out() -> void:
 		_target_zoom = Vector2(required_zoom, required_zoom)
 
 func _shoot_mg() -> void:
+	if GameManager.is_multiplayer:
+		rpc("shoot_mg_action")
+	else:
+		shoot_mg_action()
+
+@rpc("call_local")
+func shoot_mg_action() -> void:
 	if mg_timer > 0: return
 	
 	mg_timer = mg_cooldown
@@ -243,6 +274,8 @@ func set_faction(new_faction: String) -> void:
 		_: visual_node.modulate = Color.WHITE
 
 func set_active(active: bool) -> void:
+	# Local 'active' state for camera/input control
+	# In multiplayer, we also check authority, but this handles the camera switching logic
 	is_active = active
 	if camera:
 		camera.enabled = active

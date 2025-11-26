@@ -94,6 +94,10 @@ func _ready() -> void:
 	
 	# Initial State
 	if GameManager.is_multiplayer:
+		# Set Authorities
+		player_blue.set_multiplayer_authority(1) # Host is always Blue
+		player_red.set_multiplayer_authority(GameManager.red_player_id) # Client is Red
+		
 		_set_active_player(GameManager.my_faction)
 	else:
 		_set_active_player("blue")
