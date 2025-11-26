@@ -16,7 +16,7 @@ signal build_requested(building_type)
 
 @onready var fps_label = find_child("FPSLabel", true, false)
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if fps_label:
 		fps_label.text = "FPS: " + str(Engine.get_frames_per_second())
 

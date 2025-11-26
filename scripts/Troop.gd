@@ -47,6 +47,8 @@ var _color: Color = Color.WHITE
 # DEBUG FLAG
 var is_debug_unit: bool = false
 
+var nav_agent: NavigationAgent2D = null
+
 func _ready() -> void:
 	current_hp = max_hp
 	noise_seed = Vector2(randf(), randf()) * 10.0
@@ -74,6 +76,13 @@ func _ready() -> void:
 		# OR: Spawner sets authority. 
 		# For now, let's assume Host owns AI for simplicity unless assigned otherwise.
 		# We'll let the Spawner (Factory/Squad) set the authority, but default to 1 here just in case.
+	
+	# --- NAVIGATION ---
+	nav_agent = NavigationAgent2D.new()
+	# Avoidance? Maybe later. For now just pathfinding.
+	nav_agent.path_desired_distance = 20.0
+	nav_agent.target_desired_distance = 20.0
+	add_child(nav_agent)
 	
 	_setup_type_attributes()
 	
@@ -295,6 +304,8 @@ func _get_predicted_position(target: Node2D, bullet_speed: float) -> Vector2:
 func _handle_movement(delta: float) -> void:
 	var move_velocity = Vector2.ZERO
 	var holding_ground = false
+	var final_target_pos = Vector2.ZERO
+	var use_nav = false
 	
 	# 1. COMBAT MOVEMENT
 	if is_instance_valid(target_enemy):
@@ -313,8 +324,8 @@ func _handle_movement(delta: float) -> void:
 			move_velocity = Vector2.ZERO
 			holding_ground = true # STOP and HOLD
 		else:
-			var vec = target_enemy.global_position - global_position
-			move_velocity = vec.normalized() * base_speed
+			final_target_pos = target_enemy.global_position
+			use_nav = true
 	
 	# 2. FORMATION MOVEMENT
 	else:
@@ -334,10 +345,37 @@ func _handle_movement(delta: float) -> void:
 		var vector_to_target = move_target - global_position
 		var distance = vector_to_target.length()
 		
-		if distance > 2.0:
+		if distance > 5.0:
+			final_target_pos = move_target
+			use_nav = true
+			
+			# Speed mod
 			var speed_mult = 1.0
 			if distance > 60.0: speed_mult = 1.2
-			move_velocity = vector_to_target.normalized() * base_speed * speed_mult
+			
+			# We apply speed_mult later
+			# Store it temporarily? 
+			# Actually, NavAgent doesn't handle speed mod directly.
+			# We calculate direction, then apply speed.
+			
+			# If using Nav, we get next path pos.
+			# But for speed mod, we can just multiply result.
+			base_speed = _get_base_speed_for_type() * speed_mult 
+		else:
+			move_velocity = Vector2.ZERO
+	
+	# APPLY NAVIGATION
+	if use_nav and not holding_ground:
+		if nav_agent:
+			nav_agent.target_position = final_target_pos
+			if not nav_agent.is_navigation_finished():
+				var next = nav_agent.get_next_path_position()
+				move_velocity = (next - global_position).normalized() * base_speed
+			else:
+				move_velocity = Vector2.ZERO
+		else:
+			# Fallback if no nav agent (shouldn't happen)
+			move_velocity = (final_target_pos - global_position).normalized() * base_speed
 	
 	# 3. SEPARATION FORCE
 	var separation = Vector2.ZERO
@@ -351,6 +389,14 @@ func _handle_movement(delta: float) -> void:
 
 	velocity = move_velocity + recoil_velocity
 	move_and_slide()
+
+func _get_base_speed_for_type() -> float:
+	# Helper to reset base speed which might be modified by Formation logic above
+	match unit_type:
+		UnitType.RANGED: return 325.0 * 1.5
+		UnitType.MELEE: return 400.0 * 1.5
+		UnitType.ROCKET: return 275.0 * 1.5
+	return 300.0
 
 func _calculate_separation_force() -> Vector2:
 	var force = Vector2.ZERO

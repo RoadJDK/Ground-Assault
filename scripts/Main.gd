@@ -66,14 +66,21 @@ func _ready() -> void:
 		var proj_spawner = MultiplayerSpawner.new()
 		proj_spawner.name = "ProjectileSpawner"
 		proj_spawner.spawn_path = proj_container.get_path()
+		# Remove explicit scene adds if using spawn_function (though good to keep for cache?)
+		# Actually spawn_function requires scenes to be in spawnable_scenes list or cache.
 		proj_spawner.add_spawnable_scene("res://scenes/Projectiles/ProjectileMG.tscn")
 		proj_spawner.add_spawnable_scene("res://scenes/Projectiles/ProjectileHowitzer.tscn")
+		proj_spawner.spawn_function = Callable(self, "_spawn_projectile")
 		add_child(proj_spawner)
 	
 	_generate_all_plots()
 	_generate_obstacles(10) # Generate obstacles
 	
-	game_ui = find_child("GameUI", true, false)
+	# Wait for obstacles to initialize their shapes
+	await get_tree().process_frame
+	
+	# Rebake Navigation
+	var nav_region = find_child("NavigationRegion2D", true, false)
 	if game_ui:
 		print("GameUI Found.")
 		game_ui.build_requested.connect(_on_ui_build_tool_selected)
