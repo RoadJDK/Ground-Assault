@@ -246,9 +246,9 @@ func _attack_target() -> void:
 			
 			var container = get_tree().root.find_child("ProjectileContainer", true, false)
 			if container:
-				container.add_child(proj)
+				container.add_child(proj, true)
 			else:
-				get_tree().root.add_child(proj) # Fallback
+				get_tree().root.add_child(proj, true) # Fallback
 				
 			proj.global_position = global_position
 			

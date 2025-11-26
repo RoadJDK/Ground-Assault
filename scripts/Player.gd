@@ -56,6 +56,14 @@ func _ready() -> void:
 		var config = SceneReplicationConfig.new()
 		config.add_property("." + ":position")
 		config.add_property("." + ":rotation")
+		
+		# Sync Weapon Rotation if it exists
+		var w = find_child("Weapon", true, false)
+		if w:
+			# Use relative path from Player root
+			var w_path = str(self.get_path_to(w))
+			config.add_property(w_path + ":rotation")
+			
 		sync.replication_config = config
 	
 	# Find Camera
@@ -259,9 +267,9 @@ func shoot_mg_action() -> void:
 	
 	var container = get_tree().root.find_child("ProjectileContainer", true, false)
 	if container:
-		container.add_child(proj)
+		container.add_child(proj, true)
 	else:
-		get_tree().root.add_child(proj) # Fallback
+		get_tree().root.add_child(proj, true) # Fallback
 
 	proj.global_position = spawn_pos
 	proj.rotation = spawn_rot

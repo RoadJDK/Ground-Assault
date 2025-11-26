@@ -54,7 +54,7 @@ func spawn_squad() -> void:
 	
 	if unit_container:
 		var squad = SQUAD_SCENE.instantiate()
-		unit_container.add_child(squad)
+		unit_container.add_child(squad, true)
 		squad.global_position = global_position
 		
 		current_squad = squad

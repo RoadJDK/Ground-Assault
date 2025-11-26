@@ -91,7 +91,7 @@ func build_specific_building(type_name: String, faction: String, unit_type: int 
 	else:
 		build_building_rpc(type_name, faction, unit_type)
 
-@rpc("call_local")
+@rpc("any_peer", "call_local")
 func build_building_rpc(type_name: String, faction: String, unit_type: int) -> void:
 	if building_instance != null:
 		# Just for safety, though logic usually prevents this
