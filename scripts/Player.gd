@@ -206,13 +206,14 @@ func _start_commanding() -> void:
 		print("UnitContainer not found!")
 		return
 		
-	var build_range = 2500.0 # Same as build range
+	# Use the same radius as the visual indicator
+	var collection_range = _range_radius
 	var count = 0
 	
 	for child in unit_container.get_children():
 		if child.has_method("enter_command_mode"):
 			if "faction" in child and child.faction == faction:
-				if global_position.distance_to(child.global_position) <= build_range:
+				if global_position.distance_to(child.global_position) <= collection_range:
 					child.enter_command_mode(self)
 					commanded_squads.append(child)
 					count += 1
@@ -220,9 +221,11 @@ func _start_commanding() -> void:
 	if count > 0:
 		is_commanding_squads = true
 		print("Commanding ", count, " squads.")
-		show_range_indicator()
 	else:
 		print("No squads in range.")
+		
+	# Always show indicator to provide feedback
+	show_range_indicator()
 
 func _stop_commanding() -> void:
 	if not is_commanding_squads: return

@@ -16,6 +16,9 @@ var unit_type: int = 0
 var is_commanded: bool = false
 var command_target: Node2D = null
 
+# VISUALS
+var show_selection: bool = false
+
 func _ready() -> void:
 	# --- NETWORK SYNC ---
 	if GameManager.is_multiplayer:
@@ -96,6 +99,9 @@ func _decide_next_target() -> void:
 func enter_command_mode(target: Node2D) -> void:
 	is_commanded = true
 	command_target = target
+	show_selection = true
+	queue_redraw()
+	
 	# Set all troops to passive
 	for child in get_children():
 		if child is Troop:
@@ -105,11 +111,20 @@ func enter_command_mode(target: Node2D) -> void:
 func exit_command_mode() -> void:
 	is_commanded = false
 	command_target = null
+	show_selection = false
+	queue_redraw()
+	
 	# Reset troops
 	for child in get_children():
 		if child is Troop:
 			child.is_passive = false
 	_decide_next_target()
+
+func _draw() -> void:
+	if show_selection:
+		# Draw a green ring around the Squad center
+		# Since Squad is a Node2D and parent of troops, its position is the "center" of the squad (roughly)
+		draw_arc(Vector2.ZERO, 120.0, 0, TAU, 32, Color(0, 1, 0, 0.8), 4.0)
 
 func command_fire_at(pos: Vector2) -> void:
 	for child in get_children():
