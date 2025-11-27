@@ -1,42 +1,58 @@
-[gd_scene load_steps=2 format=3 uid="uid://udsjaawykctm"]
+[gd_scene load_steps=3 format=3 uid="uid://udsjaawykctm"]
 
 [ext_resource type="Script" uid="uid://8p2vf8sfcc0d" path="res://scripts/GameUI.gd" id="1_sjnlv"]
+[ext_resource type="Theme" uid="uid://cqdnew8fru4ev" path="res://scenes/UI/GameUI.tres" id="2_01rbu"]
 
 [node name="GameUi" type="CanvasLayer"]
 script = ExtResource("1_sjnlv")
 
-[node name="MarginContainer" type="MarginContainer" parent="."]
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+theme = ExtResource("2_01rbu")
+
+[node name="MarginContainer" type="MarginContainer" parent="Control"]
+layout_mode = 0
 offset_left = 24.0
 offset_top = 292.0
 offset_right = 160.0
 offset_bottom = 798.0
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Control/MarginContainer"]
 layout_mode = 2
 alignment = 1
 
-[node name="GoldLabel" type="Label" parent="MarginContainer/VBoxContainer"]
+[node name="GoldLabel" type="Label" parent="Control/MarginContainer/VBoxContainer"]
 layout_mode = 2
 horizontal_alignment = 1
 
-[node name="BtnGenerator" type="Button" parent="MarginContainer/VBoxContainer"]
+[node name="BtnGenerator" type="Button" parent="Control/MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Generator 50g"
 
-[node name="BtnShield" type="Button" parent="MarginContainer/VBoxContainer"]
+[node name="BtnShield" type="Button" parent="Control/MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Shield 80g"
 
-[node name="BtnTurret" type="Button" parent="MarginContainer/VBoxContainer"]
+[node name="BtnTurret" type="Button" parent="Control/MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Turret 100g"
 
-[node name="BtnFactory" type="Button" parent="MarginContainer/VBoxContainer"]
+[node name="BtnFactory" type="Button" parent="Control/MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Ranged
 Factory 150g"
 
-[connection signal="pressed" from="MarginContainer/VBoxContainer/BtnGenerator" to="." method="_on_btn_generator_pressed"]
-[connection signal="pressed" from="MarginContainer/VBoxContainer/BtnShield" to="." method="_on_btn_shield_pressed"]
-[connection signal="pressed" from="MarginContainer/VBoxContainer/BtnTurret" to="." method="_on_btn_turret_pressed"]
-[connection signal="pressed" from="MarginContainer/VBoxContainer/BtnFactory" to="." method="_on_btn_factory_pressed"]
+[node name="FPSLabel" type="Label" parent="Control"]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = 54.0
+offset_bottom = 22.0
+
+[connection signal="pressed" from="Control/MarginContainer/VBoxContainer/BtnGenerator" to="." method="_on_btn_generator_pressed"]
+[connection signal="pressed" from="Control/MarginContainer/VBoxContainer/BtnShield" to="." method="_on_btn_shield_pressed"]
+[connection signal="pressed" from="Control/MarginContainer/VBoxContainer/BtnTurret" to="." method="_on_btn_turret_pressed"]
+[connection signal="pressed" from="Control/MarginContainer/VBoxContainer/BtnFactory" to="." method="_on_btn_factory_pressed"]

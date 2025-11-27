@@ -1,0 +1,18 @@
+[gd_resource type="Theme" load_steps=5 format=3 uid="uid://bxrpuuyid6a85"]
+
+[ext_resource type="FontFile" uid="uid://dxvbrjw81yfl" path="res://scenes/UI/PressStart2P-Regular.ttf" id="1_aaeh0"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_2wnu3"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_aaeh0"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_exj3n"]
+
+[resource]
+Button/font_sizes/font_size = 20
+Button/fonts/font = ExtResource("1_aaeh0")
+Button/styles/focus = SubResource("StyleBoxEmpty_2wnu3")
+Button/styles/normal = SubResource("StyleBoxEmpty_aaeh0")
+Button/styles/pressed = SubResource("StyleBoxEmpty_exj3n")
+LineEdit/font_sizes/font_size = 20
+LineEdit/fonts/font = ExtResource("1_aaeh0")

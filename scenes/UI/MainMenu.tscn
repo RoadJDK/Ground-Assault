@@ -1,43 +1,119 @@
-[gd_scene load_steps=3 format=3 uid="uid://bydsxqe61cunq"]
+[gd_scene load_steps=4 format=3 uid="uid://bydsxqe61cunq"]
 
+[ext_resource type="Theme" uid="uid://bxrpuuyid6a85" path="res://scenes/UI/Main.tres" id="1_3h7gc"]
 [ext_resource type="Script" uid="uid://cprwqsa5cr7ow" path="res://scripts/MainMenu.gd" id="1_11hie"]
-
-[sub_resource type="LabelSettings" id="LabelSettings_58fj5"]
-font_size = 100
+[ext_resource type="Texture2D" uid="uid://eshuwiuul2vy" path="res://assets/PixelCommandMenu.png" id="2_58fj5"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
 anchors_preset = 0
+theme = ExtResource("1_3h7gc")
 script = ExtResource("1_11hie")
 
-[node name="ColorRect" type="ColorRect" parent="."]
+[node name="TextureRect" type="TextureRect" parent="."]
 layout_mode = 0
-offset_left = -27.0
-offset_top = -16.0
-offset_right = 1951.0
-offset_bottom = 1107.0
-color = Color(0, 0, 0, 1)
+offset_left = -7.0
+offset_right = 1927.9999
+offset_bottom = 1080.0
+texture = ExtResource("2_58fj5")
+expand_mode = 2
 
-[node name="Title" type="Label" parent="."]
+[node name="SingleplayerButton" type="Button" parent="."]
 layout_mode = 0
-offset_left = 629.0
-offset_top = 185.0
-offset_right = 1297.0
-offset_bottom = 322.0
-text = "BATTLE BORN"
-label_settings = SubResource("LabelSettings_58fj5")
+offset_left = 569.0
+offset_top = 444.0
+offset_right = 1355.0
+offset_bottom = 567.0
+size_flags_vertical = 3
+text = "Singleplayer"
+flat = true
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="MultiplayerButton" type="Button" parent="."]
 layout_mode = 0
-offset_left = 451.0
-offset_top = 530.0
-offset_right = 1467.0
-offset_bottom = 873.0
+offset_left = 568.0
+offset_top = 587.0
+offset_right = 1354.0
+offset_bottom = 709.0
+size_flags_vertical = 3
+text = "Multiplayer"
+flat = true
 
-[node name="PlayButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-text = "PLAY"
+[node name="SettingsButton" type="Button" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 568.0
+offset_top = 716.0
+offset_right = 1354.0
+offset_bottom = 838.0
+size_flags_vertical = 3
+text = "Settings"
+flat = true
 
-[node name="QuitButton" type="Button" parent="VBoxContainer"]
-layout_mode = 2
-text = "QUIT"
+[node name="QuitButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 568.0
+offset_top = 841.0
+offset_right = 1354.0
+offset_bottom = 963.0
+size_flags_vertical = 3
+text = "Quit"
+flat = true
+
+[node name="HostButton" type="Button" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 568.0
+offset_top = 444.0
+offset_right = 1354.0
+offset_bottom = 568.0
+size_flags_vertical = 3
+text = "Host Game (Blue)"
+flat = true
+
+[node name="IPText" type="LineEdit" parent="."]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 0
+offset_left = 567.0
+offset_top = 716.0
+offset_right = 1353.0
+offset_bottom = 839.0
+placeholder_text = "Enter IP (Default 127.0.0.1)"
+alignment = 1
+
+[node name="JoinButton" type="Button" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 567.0
+offset_top = 586.0
+offset_right = 1353.0
+offset_bottom = 709.0
+size_flags_vertical = 3
+text = "Join Game (Red)"
+flat = true
+
+[node name="StatusLabel" type="Label" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 567.0
+offset_top = 968.0
+offset_right = 1353.0
+offset_bottom = 991.0
+
+[node name="BackButton" type="Button" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 567.0
+offset_top = 841.0
+offset_right = 1353.0
+offset_bottom = 963.0
+size_flags_vertical = 3
+text = "Back"
+flat = true
+
+[connection signal="pressed" from="SingleplayerButton" to="." method="_on_singleplayer_button_pressed"]
+[connection signal="pressed" from="MultiplayerButton" to="." method="_on_multiplayer_button_pressed"]
+[connection signal="pressed" from="SettingsButton" to="." method="_on_settings_button_pressed"]
+[connection signal="pressed" from="QuitButton" to="." method="_on_quit_button_pressed"]
+[connection signal="pressed" from="HostButton" to="." method="_on_host_button_pressed"]
+[connection signal="pressed" from="JoinButton" to="." method="_on_join_button_pressed"]
+[connection signal="pressed" from="BackButton" to="." method="_on_back_button_pressed"]

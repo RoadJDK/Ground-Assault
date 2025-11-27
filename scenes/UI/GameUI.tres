@@ -1,0 +1,19 @@
+[gd_resource type="Theme" load_steps=4 format=3 uid="uid://cqdnew8fru4ev"]
+
+[ext_resource type="FontFile" uid="uid://dxvbrjw81yfl" path="res://scenes/UI/PressStart2P-Regular.ttf" id="1_86jqy"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_86jqy"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_86jqy"]
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+bg_color = Color(0.25490198, 0.22352941, 0.14901961, 0.63529414)
+
+[resource]
+Button/font_sizes/font_size = 15
+Button/fonts/font = ExtResource("1_86jqy")
+Button/styles/focus = SubResource("StyleBoxEmpty_86jqy")
+Button/styles/normal = SubResource("StyleBoxFlat_86jqy")
+Label/fonts/font = ExtResource("1_86jqy")
