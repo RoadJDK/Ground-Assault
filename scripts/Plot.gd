@@ -53,6 +53,10 @@ func _input(event: InputEvent) -> void:
 						break
 				
 				if active_player:
+					# Fix: Allow shooting enemy buildings by ignoring input if faction mismatch
+					if "faction" in building_instance and building_instance.faction != active_player.faction:
+						return # Propagate input to Player for shooting
+
 					if active_player.global_position.distance_to(global_position) > 1000.0:
 						print("Too far to sell!")
 						if active_player.has_method("show_range_indicator"):

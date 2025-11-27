@@ -199,11 +199,11 @@ func _physics_process(delta: float) -> void:
 		rotation = rotate_toward(rotation, velocity.angle(), 5.0 * delta)
 
 func _handle_combat(delta: float) -> void:
-	if is_passive: return # Do not scan or auto-attack in passive mode
-
 	if attack_timer > 0: attack_timer -= delta
 	scan_timer -= delta
 	_shield_check_timer -= delta
+
+	if is_passive: return # Do not scan or auto-attack in passive mode
 	
 	if target_enemy != null and not is_instance_valid(target_enemy):
 		target_enemy = null
