@@ -294,6 +294,12 @@ func force_attack_at(target_pos: Vector2) -> void:
 		if projectile_scene:
 			var spawn_rot = dir
 			
+			# Dynamic Spread based on movement (Same as Player)
+			var spread_amount = 0.05
+			if velocity.length() > 10.0:
+				spread_amount = 0.1
+			spawn_rot += randf_range(-spread_amount, spread_amount)
+			
 			var final_dmg = damage
 			if GameManager.is_multiplayer:
 				var spawner = get_tree().root.find_child("ProjectileSpawner", true, false)

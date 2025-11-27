@@ -24,6 +24,16 @@ func setup(dmg: int, spd: float, group: String, source_node: Node2D = null, radi
 	shooter = source_node
 	explosion_radius = radius
 	add_to_group("projectile")
+	
+	# Colorize based on shooter faction
+	var col = Color(1.5, 1.5, 0.5) # Default Yellow (HDR)
+	if is_instance_valid(shooter) and "faction" in shooter:
+		if shooter.faction == "blue": 
+			col = Color(0.5, 0.5, 2.5) # Blue (HDR)
+		elif shooter.faction == "red": 
+			col = Color(2.5, 0.5, 0.5) # Red (HDR)
+	
+	modulate = col
 
 func _physics_process(delta: float) -> void:
 	if _exploded: return

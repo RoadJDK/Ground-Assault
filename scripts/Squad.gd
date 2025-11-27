@@ -124,7 +124,8 @@ func _draw() -> void:
 	if show_selection:
 		# Draw a green ring around the Squad center
 		# Since Squad is a Node2D and parent of troops, its position is the "center" of the squad (roughly)
-		draw_arc(Vector2.ZERO, 120.0, 0, TAU, 32, Color(0, 1, 0, 0.8), 4.0)
+		# Increased radius by 10px (120 -> 130) and enabled antialiasing
+		draw_arc(Vector2.ZERO, 130.0, 0, TAU, 32, Color(0, 1, 0, 0.8), 4.0, true)
 
 func command_fire_at(pos: Vector2) -> void:
 	for child in get_children():

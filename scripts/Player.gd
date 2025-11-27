@@ -196,9 +196,10 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 func _start_commanding() -> void:
-	if is_commanding_squads: return
+	# Removed "if is_commanding_squads: return" to allow adding more squads
 	
-	commanded_squads.clear()
+	# Don't clear commanded_squads if you want to ADD. 
+	# commanded_squads.clear() 
 	
 	# Safer: Find children of the main UnitContainer
 	var unit_container = get_tree().root.find_child("UnitContainer", true, false)
@@ -209,18 +210,25 @@ func _start_commanding() -> void:
 	# Use the same radius as the visual indicator
 	var collection_range = _range_radius
 	var count = 0
+	var added_count = 0
 	
 	for child in unit_container.get_children():
 		if child.has_method("enter_command_mode"):
 			if "faction" in child and child.faction == faction:
+				# Check if already commanded to avoid duplicates
+				if child in commanded_squads:
+					continue
+					
 				if global_position.distance_to(child.global_position) <= collection_range:
 					child.enter_command_mode(self)
 					commanded_squads.append(child)
-					count += 1
+					added_count += 1
 	
-	if count > 0:
+	if added_count > 0:
 		is_commanding_squads = true
-		print("Commanding ", count, " squads.")
+		print("Commanded +", added_count, " new squads. Total: ", commanded_squads.size())
+	elif commanded_squads.size() > 0:
+		print("No new squads found. Maintaining command of ", commanded_squads.size())
 	else:
 		print("No squads in range.")
 		
@@ -245,7 +253,8 @@ func show_range_indicator() -> void:
 func _draw() -> void:
 	if _show_range_timer > 0:
 		var col = Color(0, 1, 0, 0.8) if is_commanding_squads else Color(1, 0, 0, 0.8)
-		draw_arc(Vector2.ZERO, _range_radius, 0, TAU, 64, col, 3.0)
+		# Added antialiasing = true
+		draw_arc(Vector2.ZERO, _range_radius, 0, TAU, 64, col, 3.0, true)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_active: return
@@ -347,10 +356,13 @@ func shoot_mg_action() -> void:
 	# COMMAND SQUADS FIRE
 	if is_commanding_squads:
 		var aim_target = get_global_mouse_position()
-		# Offset aim target by random to simulate spread fire from group
 		for squad in commanded_squads:
 			if is_instance_valid(squad):
-				squad.command_fire_at(aim_target)
+				# Buffer shots: Add a small random delay to each squad's fire command
+				# This prevents 15+ shots happening on the exact same frame
+				get_tree().create_timer(randf_range(0.0, 0.15)).timeout.connect(
+					func(): if is_instance_valid(squad): squad.command_fire_at(aim_target)
+				)
 
 	if GameManager.is_multiplayer:
 		# Only the Server (Host) owns the ProjectileSpawner and can spawn networked objects

@@ -166,4 +166,5 @@ func _spawn_projectile(scene, muzzle, dmg, speed, group, rotation_override, radi
 	get_tree().root.add_child(proj)
 	proj.global_position = muzzle.global_position
 	proj.rotation = rotation_override
+	# Self is passed as shooter, so Projectile.gd will read self.faction
 	proj.setup(dmg, speed, group, self, radius)
