@@ -5,7 +5,7 @@ extends CharacterBody2D
 
 # Zoom Settings
 @export var min_zoom: float = 0.5
-@export var max_zoom: float = 18.0
+@export var max_zoom: float = 72.0
 @export var zoom_step: float = 0.1
 
 const PROJ_MG_SCENE = preload("res://scenes/Projectiles/ProjectileMG.tscn")

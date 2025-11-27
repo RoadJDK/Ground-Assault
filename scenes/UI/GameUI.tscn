@@ -5,45 +5,38 @@
 [node name="GameUi" type="CanvasLayer"]
 script = ExtResource("1_sjnlv")
 
-[node name="BuildMenu" type="PanelContainer" parent="."]
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -31.0
-grow_horizontal = 2
-grow_vertical = 0
+[node name="MarginContainer" type="MarginContainer" parent="."]
+offset_left = 24.0
+offset_top = 292.0
+offset_right = 160.0
+offset_bottom = 798.0
 
-[node name="HBoxContainer" type="HBoxContainer" parent="BuildMenu"]
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
 layout_mode = 2
 alignment = 1
 
-[node name="GoldLabel" type="Label" parent="BuildMenu/HBoxContainer"]
+[node name="GoldLabel" type="Label" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
+horizontal_alignment = 1
 
-[node name="BtnGenerator" type="Button" parent="BuildMenu/HBoxContainer"]
+[node name="BtnGenerator" type="Button" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Generator 50g"
 
-[node name="BtnTurret" type="Button" parent="BuildMenu/HBoxContainer"]
-layout_mode = 2
-text = "Turret 100g"
-
-[node name="BtnFactory" type="Button" parent="BuildMenu/HBoxContainer"]
-layout_mode = 2
-text = "Factory 150g"
-
-[node name="BtnShield" type="Button" parent="BuildMenu/HBoxContainer"]
+[node name="BtnShield" type="Button" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Shield 80g"
 
-[node name="UnitLabel" type="Label" parent="BuildMenu/HBoxContainer"]
+[node name="BtnTurret" type="Button" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
+text = "Turret 100g"
 
-[node name="FPSLabel" type="Label" parent="BuildMenu"]
+[node name="BtnFactory" type="Button" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
+text = "Ranged
+Factory 150g"
 
-[connection signal="pressed" from="BuildMenu/HBoxContainer/BtnGenerator" to="." method="_on_btn_generator_pressed"]
-[connection signal="pressed" from="BuildMenu/HBoxContainer/BtnTurret" to="." method="_on_btn_turret_pressed"]
-[connection signal="pressed" from="BuildMenu/HBoxContainer/BtnFactory" to="." method="_on_btn_factory_pressed"]
-[connection signal="pressed" from="BuildMenu/HBoxContainer/BtnShield" to="." method="_on_btn_shield_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/BtnGenerator" to="." method="_on_btn_generator_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/BtnShield" to="." method="_on_btn_shield_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/BtnTurret" to="." method="_on_btn_turret_pressed"]
+[connection signal="pressed" from="MarginContainer/VBoxContainer/BtnFactory" to="." method="_on_btn_factory_pressed"]

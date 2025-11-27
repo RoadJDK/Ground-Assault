@@ -31,6 +31,11 @@ func _physics_process(delta: float) -> void:
 	var direction = Vector2.RIGHT.rotated(rotation)
 	position += direction * speed * delta
 	
+	# Bounds Check
+	if global_position.x < -6500 or global_position.x > 6500 or global_position.y < -4000 or global_position.y > 4000:
+		queue_free()
+		return
+	
 	life_timer -= delta
 	if life_timer <= 0:
 		if GameManager.is_multiplayer:

@@ -8,7 +8,7 @@ extends Camera2D
 @export var wheel_zoom: bool = true
 
 @export var camera_speed: int = 1000 
-@export var max_zoom: float = 4.0
+@export var max_zoom: float = 16.0
 @export var min_zoom: float = 0.1
 @export var camera_margin: int = 50
 @export var zoom_step: float = 0.02

@@ -49,6 +49,7 @@ var is_debug_unit: bool = false
 
 var nav_agent: NavigationAgent2D = null
 var _nav_path_timer: float = 0.0
+var separation_area: Area2D = null
 
 func _ready() -> void:
 	current_hp = max_hp
@@ -57,6 +58,21 @@ func _ready() -> void:
 	
 	top_level = true 
 	add_to_group("unit")
+	
+	# --- SEPARATION SENSOR ---
+	separation_area = Area2D.new()
+	var shape = CircleShape2D.new()
+	shape.radius = 75.0
+	var col = CollisionShape2D.new()
+	col.shape = shape
+	separation_area.add_child(col)
+	separation_area.collision_layer = 0
+	# FIX: Units are on Layer 2. Default mask is 1 (Terrain). 
+	# We must explicitly mask Layer 2 to detect other units.
+	separation_area.collision_mask = 2 
+	separation_area.monitorable = false
+	separation_area.monitoring = true
+	add_child(separation_area)
 	
 	# --- NETWORK SYNC ---
 	if GameManager.is_multiplayer:
@@ -349,12 +365,14 @@ func _handle_movement(delta: float) -> void:
 		
 		if distance > 5.0:
 			final_target_pos = move_target
-			use_nav = true
+			use_nav = false # Direct movement, rely on Squad leader's pathfinding
 			
 			# Speed mod
 			var speed_mult = 1.0
 			if distance > 60.0: speed_mult = 1.2
 			base_speed = _get_base_speed_for_type() * speed_mult 
+			
+			move_velocity = vector_to_target.normalized() * base_speed
 		else:
 			move_velocity = Vector2.ZERO
 	
@@ -407,11 +425,13 @@ func _calculate_separation_force() -> Vector2:
 	var neighbor_count = 0
 	var separation_radius = 75.0 
 	
-	var units = get_tree().get_nodes_in_group("unit")
+	# OPTIMIZATION: Use the local Area2D sensor
+	var units = separation_area.get_overlapping_bodies()
 	
 	for unit in units:
 		if unit == self: continue
-		if unit.faction != faction: continue 
+		if not unit.is_in_group("unit"): continue
+		if "faction" in unit and unit.faction != faction: continue 
 		
 		var dist = global_position.distance_to(unit.global_position)
 		if dist < separation_radius and dist > 0.1:

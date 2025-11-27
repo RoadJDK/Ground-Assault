@@ -28,6 +28,11 @@ var game_ui: CanvasLayer = null
 var player_blue: Node2D = null
 var player_red: Node2D = null
 
+var faction_colors = {
+	"blue": Color(0.4, 0.4, 1.0),
+	"red": Color(1.0, 0.4, 0.4)
+}
+
 # --- MAP LIMITS ---
 const LIMIT_LEFT: float = -6956.0
 const LIMIT_TOP: float = -4622.0
@@ -411,45 +416,47 @@ func _update_plot_availability() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
-		var unit_changed = false
-		
 		if not GameManager.is_multiplayer:
 			if event.keycode == KEY_Q:
 				_set_active_player("blue")
 			elif event.keycode == KEY_E:
 				_set_active_player("red")
 			
-		# UNIT TYPES (Y, X, C)
-		elif event.keycode == KEY_Y:
-			current_unit_type = 0 # Ranged
-			print("Next Factory will build: RANGED")
-			unit_changed = true
-		elif event.keycode == KEY_X:
-			current_unit_type = 1 # Melee
-			print("Next Factory will build: MELEE")
-			unit_changed = true
-		elif event.keycode == KEY_C:
-			current_unit_type = 2 # Rocket
-			print("Next Factory will build: ROCKET")
-			unit_changed = true
-			
-		elif event.keycode == KEY_1:
+		# Removed Unit Types (Y, X, C) & Number Hotkeys per request
+
+		# Re-implemented Keyboard Building Switch (1,2,3,4) per request
+		if event.keycode == KEY_1:
 			_on_ui_build_tool_selected("Generator")
 		elif event.keycode == KEY_2:
-			_on_ui_build_tool_selected("Turret")
-		elif event.keycode == KEY_3:
-			_on_ui_build_tool_selected("Factory")
-		elif event.keycode == KEY_4:
 			_on_ui_build_tool_selected("Shield")
-		
-		if unit_changed:
-			_update_unit_ui()
+		elif event.keycode == KEY_3:
+			_on_ui_build_tool_selected("Turret")
+		elif event.keycode == KEY_4:
+			_on_ui_build_tool_selected("Factory")
+			current_unit_type = 0 # Explicitly set to Ranged
+			_update_unit_ui() # Update UI to show "Ranged Factory"
 
 func _on_ui_build_tool_selected(type_name: String) -> void:
-	selected_building_tool = type_name
-	
+	var highlight_color = faction_colors.get(current_build_faction, Color.YELLOW) # Default to yellow if faction not found
+	var was_active = false
 	if game_ui and game_ui.has_method("highlight_tool"):
-		game_ui.highlight_tool(type_name)
+		# highlight_tool now returns true if it was already selected
+		was_active = game_ui.highlight_tool(type_name, highlight_color)
+	
+	# CRITICAL FIX: Release focus from buttons to prevent W/S from navigating UI
+	get_viewport().gui_release_focus()
+	
+	if type_name == "Factory":
+		if was_active and selected_building_tool == "Factory":
+			# Cycle Unit Type: 0 -> 1 -> 2 -> 0
+			current_unit_type = (current_unit_type + 1) % 3
+			_update_unit_ui() # Updates the button text
+			# No need to set selected_building_tool again if cycling, it remains "Factory"
+		else:
+			selected_building_tool = type_name
+			_update_unit_ui() # Ensure text is correct
+	else:
+		selected_building_tool = type_name
 		
 	print("Tool: ", type_name, " | Faction: ", current_build_faction)
 
@@ -507,10 +514,10 @@ func _update_gold_ui() -> void:
 		game_ui.update_gold_display(amount)
 
 func _update_unit_ui() -> void:
-	if game_ui and game_ui.has_method("update_unit_display"):
+	if game_ui and game_ui.has_method("update_factory_button_text"):
 		var type_name = "Ranged"
 		match current_unit_type:
 			0: type_name = "Ranged"
 			1: type_name = "Melee"
 			2: type_name = "Rocket"
-		game_ui.update_unit_display(type_name)
+		game_ui.update_factory_button_text(type_name)
