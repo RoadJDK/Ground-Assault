@@ -14,5 +14,6 @@ Button/fonts/font = ExtResource("1_aaeh0")
 Button/styles/focus = SubResource("StyleBoxEmpty_2wnu3")
 Button/styles/normal = SubResource("StyleBoxEmpty_aaeh0")
 Button/styles/pressed = SubResource("StyleBoxEmpty_exj3n")
+Label/fonts/font = ExtResource("1_aaeh0")
 LineEdit/font_sizes/font_size = 20
 LineEdit/fonts/font = ExtResource("1_aaeh0")

@@ -6,8 +6,8 @@ const OBSTACLE_SCENE = preload("res://scenes/Obstacle.tscn")
 
 # --- ECONOMY ---
 var faction_gold = {
-	"blue": 1000,
-	"red": 1000,
+	"blue": 250,
+	"red": 250,
 	"neutral": 0
 }
 
@@ -80,13 +80,29 @@ func _ready() -> void:
 	_generate_obstacles(10) # Generate obstacles
 	
 	# Wait for obstacles to initialize their shapes
-	await get_tree().process_frame
+	await get_tree().physics_frame
+	await get_tree().physics_frame
 	
 	# Rebake Navigation
 	var nav_region = find_child("NavigationRegion2D", true, false)
 	if nav_region:
-		nav_region.bake_navigation_polygon()
-	
+		var poly = nav_region.navigation_polygon
+		if not poly:
+			poly = NavigationPolygon.new()
+			nav_region.navigation_polygon = poly
+		
+		# Configure Polygon to parse the obstacle group
+		poly.source_geometry_mode = NavigationPolygon.SOURCE_GEOMETRY_GROUPS_WITH_CHILDREN
+		poly.source_geometry_group_name = "navigation_polygon_source_geometry_group"
+		poly.agent_radius = 75.0 # Increased buffer for formations
+		
+		# CRITICAL: Ensure we parse Static Colliders (since Obstacles use CollisionPolygon2D)
+		poly.parsed_geometry_type = NavigationPolygon.PARSED_GEOMETRY_STATIC_COLLIDERS
+		# Ensure we scan the layer where Obstacles live (Layer 15 = 16384). Using ~0 for ALL layers.
+		poly.parsed_collision_mask = 4294967295
+		
+		print("Baking Navigation Mesh... Obstacles: ", get_tree().get_nodes_in_group("navigation_polygon_source_geometry_group").size())
+		nav_region.bake_navigation_polygon()	
 	game_ui = find_child("GameUI", true, false)
 	if game_ui:
 		print("GameUI Found. Connecting signals...")
@@ -94,6 +110,15 @@ func _ready() -> void:
 			game_ui.build_requested.connect(_on_ui_build_tool_selected)
 		_update_gold_ui()
 		_update_unit_ui()
+		
+		# Add Pause Menu (PauseUI is a Control, so we wrap it in a CanvasLayer)
+		var pause_layer = CanvasLayer.new()
+		pause_layer.layer = 10 # High layer to be on top
+		pause_layer.name = "PauseLayer"
+		add_child(pause_layer)
+		
+		var pause_ui = load("res://scenes/UI/PauseUI.tscn").instantiate()
+		pause_layer.add_child(pause_ui)
 	else:
 		print("ERROR: GameUI NOT Found! Check the scene tree.")
 	
@@ -154,6 +179,10 @@ func _set_active_player(faction: String) -> void:
 		print("Faction Mode: RED (Player Active)")
 	
 	_update_gold_ui()
+	
+	# Refresh the tool highlight to match the new faction color
+	if selected_building_tool != "":
+		_on_ui_build_tool_selected(selected_building_tool)
 
 func _generate_all_plots() -> void:
 	var y_min = LIMIT_TOP + 1000.0
@@ -433,8 +462,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			_on_ui_build_tool_selected("Turret")
 		elif event.keycode == KEY_4:
 			_on_ui_build_tool_selected("Factory")
-			current_unit_type = 0 # Explicitly set to Ranged
-			_update_unit_ui() # Update UI to show "Ranged Factory"
 
 func _on_ui_build_tool_selected(type_name: String) -> void:
 	var highlight_color = faction_colors.get(current_build_faction, Color.YELLOW) # Default to yellow if faction not found
@@ -454,6 +481,7 @@ func _on_ui_build_tool_selected(type_name: String) -> void:
 			# No need to set selected_building_tool again if cycling, it remains "Factory"
 		else:
 			selected_building_tool = type_name
+			# Don't reset current_unit_type here, keep last selected or default
 			_update_unit_ui() # Ensure text is correct
 	else:
 		selected_building_tool = type_name
@@ -475,13 +503,13 @@ func _on_plot_clicked(plot_node) -> void:
 		
 		# --- FACTORY LIMITS ---
 		if selected_building_tool == "Factory":
-			var limits = { 0: 3, 1: 1, 2: 1 }
+			var limits = { 0: 2, 1: 1, 2: 1 }
 			var current_count = 0
 			
 			for p in generated_plots:
 				if is_instance_valid(p.building_instance) and "unit_type" in p.building_instance:
-					# Check if it's a friendly factory
-					if p.building_instance.faction == current_build_faction and p.building_instance.name.contains("Factory"):
+					# Check if it's a friendly factory using the GROUP
+					if p.building_instance.faction == current_build_faction and p.building_instance.is_in_group("factory"):
 						if p.building_instance.unit_type == current_unit_type:
 							current_count += 1
 			

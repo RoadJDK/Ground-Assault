@@ -12,6 +12,10 @@ var is_wandering: bool = true
 var faction: String = "neutral"
 var unit_type: int = 0 
 
+# COMMAND MODE
+var is_commanded: bool = false
+var command_target: Node2D = null
+
 func _ready() -> void:
 	# --- NETWORK SYNC ---
 	if GameManager.is_multiplayer:
@@ -54,6 +58,9 @@ func _physics_process(delta: float) -> void:
 	if nav_agent.is_navigation_finished():
 		_decide_next_target()
 		return
+	
+	if is_commanded and is_instance_valid(command_target):
+		nav_agent.target_position = command_target.global_position
 
 	var next_path_position = nav_agent.get_next_path_position()
 	var current_agent_position = global_position
@@ -66,6 +73,10 @@ func _physics_process(delta: float) -> void:
 	global_position += new_velocity * delta
 
 func _decide_next_target() -> void:
+	if is_commanded and is_instance_valid(command_target):
+		nav_agent.target_position = command_target.global_position
+		return
+
 	var enemy_buildings = get_tree().get_nodes_in_group("building")
 	var nearest_building: Node2D = null
 	var min_dist = 999999.0
@@ -81,6 +92,29 @@ func _decide_next_target() -> void:
 		nav_agent.target_position = nearest_building.global_position
 	else:
 		_pick_random_target()
+
+func enter_command_mode(target: Node2D) -> void:
+	is_commanded = true
+	command_target = target
+	# Set all troops to passive
+	for child in get_children():
+		if child is Troop:
+			child.is_passive = true
+			child.target_enemy = null # Clear current target
+
+func exit_command_mode() -> void:
+	is_commanded = false
+	command_target = null
+	# Reset troops
+	for child in get_children():
+		if child is Troop:
+			child.is_passive = false
+	_decide_next_target()
+
+func command_fire_at(pos: Vector2) -> void:
+	for child in get_children():
+		if child is Troop:
+			child.force_attack_at(pos)
 
 func setup_squad_formation(cols: int, rows: int) -> void:
 	var troop_scene_path = "res://scenes/Troops/Types/Ranged.tscn"

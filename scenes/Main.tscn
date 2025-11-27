@@ -6,10 +6,10 @@
 [ext_resource type="PackedScene" uid="uid://pe20yx7wsrtf" path="res://scenes/Player/Player.tscn" id="4_vcsgt"]
 
 [sub_resource type="NavigationPolygon" id="NavigationPolygon_0bbpv"]
-vertices = PackedVector2Array(6929, -3551.0078, 6929, 4118.9688, -6224.008, 4083.0234, -6232.9766, -3575.9766)
+vertices = PackedVector2Array(6919, -3541.0313, 6919, 4108.9375, -6214.0234, 4073.0469, -6222.9688, -3565.961)
 polygons = Array[PackedInt32Array]([PackedInt32Array(0, 1, 2, 3)])
 outlines = Array[PackedVector2Array]([PackedVector2Array(-6243, -3586, -6234, 4093, 6939, 4129, 6939, -3561)])
-agent_radius = 5.0
+agent_radius = 20.0
 
 [sub_resource type="Environment" id="Environment_rarhs"]
 background_mode = 3

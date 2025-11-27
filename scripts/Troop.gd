@@ -35,6 +35,9 @@ var attack_timer: float = 0.0
 var scan_timer: float = 0.0
 var projectile_scene: PackedScene = null
 
+# COMMAND MODE
+var is_passive: bool = false
+
 # Movement Variance
 var engagement_variance: float = 0.6
 
@@ -51,10 +54,18 @@ var nav_agent: NavigationAgent2D = null
 var _nav_path_timer: float = 0.0
 var separation_area: Area2D = null
 
+# Shield Cache
+var cached_shield: Node2D = null
+var _shield_check_timer: float = 0.0
+
 func _ready() -> void:
 	current_hp = max_hp
 	noise_seed = Vector2(randf(), randf()) * 10.0
 	engagement_variance = randf_range(0.5, 0.9)
+	
+	# Randomize scan timer to desync units
+	scan_timer = randf_range(0.1, 0.5)
+	_shield_check_timer = randf_range(0.0, 1.0)
 	
 	top_level = true 
 	add_to_group("unit")
@@ -87,16 +98,15 @@ func _ready() -> void:
 		sync.replication_config = config
 		
 		add_child(sync)
-		
-		# Determine Authority:
-		# Troops are usually spawned by Squads/Buildings. 
-		# If we want simple logic: Host owns all AI.
-		# OR: Spawner sets authority. 
-		# For now, let's assume Host owns AI for simplicity unless assigned otherwise.
-		# We'll let the Spawner (Factory/Squad) set the authority, but default to 1 here just in case.
 	
 	# --- NAVIGATION ---
 	nav_agent = NavigationAgent2D.new()
+	nav_agent.avoidance_enabled = true # Enable RVO avoidance
+	nav_agent.radius = 30.0
+	nav_agent.neighbor_distance = 200.0
+	nav_agent.time_horizon_agents = 1.0
+	nav_agent.time_horizon_obstacles = 1.0
+	
 	# Avoidance? Maybe later. For now just pathfinding.
 	nav_agent.path_desired_distance = 20.0
 	nav_agent.target_desired_distance = 20.0
@@ -124,28 +134,28 @@ func _setup_type_attributes() -> void:
 	match unit_type:
 		UnitType.RANGED:
 			damage = 1
-			attack_range = 1125.0      
-			attack_cooldown = 0.8
+			attack_range = 1200.0      
+			attack_cooldown = 0.4 # Fast Fire Rate
 			max_hp = 20
-			base_speed = 325.0
-			attack_speed = 2000.0
-			explosion_radius = 20.0 
+			base_speed = 350.0
+			attack_speed = 2200.0
+			explosion_radius = 15.0 
 			projectile_scene = load("res://scenes/Projectiles/ProjectileMG.tscn")
 		UnitType.MELEE:
-			damage = 2
-			attack_range = 187.5      
-			attack_cooldown = 0.5
-			max_hp = 40
-			base_speed = 400.0
+			damage = 5 # High Base Damage
+			attack_range = 200.0      
+			attack_cooldown = 0.8
+			max_hp = 60 # Tanky
+			base_speed = 450.0 # Fast
 			explosion_radius = 0.0
 		UnitType.ROCKET:
-			damage = 4 
-			attack_range = 1875.0     
-			attack_cooldown = 6.0 
+			damage = 8 # High Splash Damage
+			attack_range = 1800.0     
+			attack_cooldown = 3.5 
 			max_hp = 30
 			base_speed = 275.0
-			attack_speed = 1000.0 
-			explosion_radius = 200.0 
+			attack_speed = 1100.0 
+			explosion_radius = 250.0 # Large AoE
 			projectile_scene = load("res://scenes/Projectiles/ProjectileHowitzer.tscn")
 	current_hp = max_hp
 
@@ -189,16 +199,20 @@ func _physics_process(delta: float) -> void:
 		rotation = rotate_toward(rotation, velocity.angle(), 5.0 * delta)
 
 func _handle_combat(delta: float) -> void:
+	if is_passive: return # Do not scan or auto-attack in passive mode
+
 	if attack_timer > 0: attack_timer -= delta
 	scan_timer -= delta
+	_shield_check_timer -= delta
 	
 	if target_enemy != null and not is_instance_valid(target_enemy):
 		target_enemy = null
-		_select_next_target() 
+		# Don't immediately scan, wait for timer to spread load
 	
 	if scan_timer <= 0:
-		scan_timer = 0.15
-		_scan_for_enemies()
+		scan_timer = randf_range(0.2, 0.4) # Randomize interval slightly
+		if target_enemy == null:
+			_scan_for_enemies()
 	
 	if is_instance_valid(target_enemy):
 		var dist = global_position.distance_to(target_enemy.global_position)
@@ -213,10 +227,14 @@ func _handle_combat(delta: float) -> void:
 			target_enemy = null
 			return
 		
-		var shield = _get_protecting_shield(target_enemy)
+		# Shield Check (Throttled)
+		if _shield_check_timer <= 0:
+			_shield_check_timer = 1.0
+			cached_shield = _get_protecting_shield(target_enemy)
+			
 		var required_dist = attack_range * engagement_variance
 		
-		if shield:
+		if cached_shield:
 			required_dist = 600.0
 		
 		if effective_dist <= required_dist + 10.0:
@@ -224,49 +242,94 @@ func _handle_combat(delta: float) -> void:
 				_attack_target()
 
 func _scan_for_enemies() -> void:
-	nearby_enemies.clear()
+	# OPTIMIZATION: Removed list creation and sorting.
+	# Now iterates to find nearest directly.
 	
-	var scan_radius = 4500.0 
+	# Detect enemies earlier (2x range or 1500 min) so we walk to them
+	var scan_radius = max(1500.0, attack_range * 2.0)
+	var nearest_dist = scan_radius
+	var nearest_node = null
 	
+	# Check Units
 	var enemy_units = get_tree().get_nodes_in_group("unit")
 	for u in enemy_units:
-		# Removed Player check to allow targeting
-		
 		if "faction" in u and u.faction != faction and u.faction != "neutral":
 			var dist = global_position.distance_to(u.global_position)
-			if dist < scan_radius:
-				nearby_enemies.append(u)
+			if dist < nearest_dist:
+				nearest_dist = dist
+				nearest_node = u
 	
+	# Check Buildings (only if no unit found closer than current nearest)
 	var enemy_buildings = get_tree().get_nodes_in_group("building")
 	for b in enemy_buildings:
 		if "faction" in b and b.faction != faction and b.faction != "neutral":
 			var dist = global_position.distance_to(b.global_position)
-			if dist < scan_radius:
-				nearby_enemies.append(b)
+			if dist < nearest_dist:
+				nearest_dist = dist
+				nearest_node = b
 	
-	nearby_enemies.sort_custom(func(a, b): 
-		return global_position.distance_to(a.global_position) < global_position.distance_to(b.global_position)
-	)
-	
-	if not is_instance_valid(target_enemy) and not nearby_enemies.is_empty():
-		target_enemy = nearby_enemies[0]
+	target_enemy = nearest_node
 
 func _select_next_target() -> void:
-	target_enemy = null
-	for candidate in nearby_enemies:
-		if is_instance_valid(candidate):
-			target_enemy = candidate
-			break
+	# Fallback to scan
+	_scan_for_enemies()
+
+func force_attack_at(target_pos: Vector2) -> void:
+	# Force rotation towards target
+	var dir = (target_pos - global_position).angle()
+	rotation = dir
 	
-	if target_enemy == null:
-		_scan_for_enemies()
+	if attack_timer > 0: return
+	
+	attack_timer = attack_cooldown
+	
+	if unit_type == UnitType.MELEE:
+		# Melee can only hit if actually close, so this might be ineffective at range
+		# We check distance to target pos
+		if global_position.distance_to(target_pos) <= attack_range + 20.0:
+			# Try to find an enemy at that location to damage
+			# Note: This is a simple approximation.
+			pass
+	else:
+		if projectile_scene:
+			var spawn_rot = dir
+			
+			var final_dmg = damage
+			if GameManager.is_multiplayer:
+				var spawner = get_tree().root.find_child("ProjectileSpawner", true, false)
+				if spawner:
+					var data = {
+						"scene_path": projectile_scene.resource_path,
+						"pos": global_position,
+						"rot": spawn_rot,
+						"dmg": final_dmg,
+						"spd": attack_speed,
+						"group": "all", # Hit anything
+						"shooter_path": get_path(),
+						"radius": explosion_radius
+					}
+					spawner.spawn(data)
+			else:
+				var proj = projectile_scene.instantiate()
+				get_tree().root.add_child(proj)
+				proj.global_position = global_position
+				proj.rotation = spawn_rot
+				proj.setup(final_dmg, attack_speed, "all", self, explosion_radius)
+			
+			if unit_type == UnitType.ROCKET:
+				var recoil_dir = (global_position - target_pos).normalized()
+				recoil_velocity = recoil_dir * 900.0
 
 func _attack_target() -> void:
 	attack_timer = attack_cooldown
 	
 	if unit_type == UnitType.MELEE:
 		if target_enemy.has_method("take_damage"):
-			target_enemy.take_damage(damage)
+			var final_dmg = damage
+			# Melee Bonus vs Buildings
+			if target_enemy.is_in_group("building"):
+				final_dmg *= 2
+			target_enemy.take_damage(final_dmg)
 	else:
 		if projectile_scene:
 			var aim_pos = _get_predicted_position(target_enemy, attack_speed)
@@ -275,6 +338,11 @@ func _attack_target() -> void:
 			var target_group = "unit"
 			if target_enemy.is_in_group("building"): target_group = "building"
 
+			var final_dmg = damage
+			# Ranged Bonus vs Units
+			if unit_type == UnitType.RANGED and target_group == "unit":
+				final_dmg = 2 # Double damage vs Squads
+
 			if GameManager.is_multiplayer:
 				var spawner = get_tree().root.find_child("ProjectileSpawner", true, false)
 				if spawner:
@@ -282,7 +350,7 @@ func _attack_target() -> void:
 						"scene_path": projectile_scene.resource_path,
 						"pos": global_position,
 						"rot": spawn_rot,
-						"dmg": damage,
+						"dmg": final_dmg,
 						"spd": attack_speed,
 						"group": target_group,
 						"shooter_path": get_path(),
@@ -294,7 +362,7 @@ func _attack_target() -> void:
 				get_tree().root.add_child(proj)
 				proj.global_position = global_position
 				proj.rotation = spawn_rot
-				proj.setup(damage, attack_speed, target_group, self, explosion_radius)
+				proj.setup(final_dmg, attack_speed, target_group, self, explosion_radius)
 			
 			if unit_type == UnitType.ROCKET:
 				var recoil_dir = (global_position - target_enemy.global_position).normalized()
@@ -305,19 +373,12 @@ func _get_predicted_position(target: Node2D, bullet_speed: float) -> Vector2:
 	var dist = global_position.distance_to(target.global_position)
 	var time_to_hit = dist / bullet_speed
 	
-	# 2. Iterative refinement (3 passes)
-	for i in range(3):
-		var predicted_pos = target.global_position
-		if "velocity" in target:
-			predicted_pos += target.velocity * time_to_hit
-		
-		dist = global_position.distance_to(predicted_pos)
-		time_to_hit = dist / bullet_speed
-	
-	# 3. Final Calculation
+	# 2. Iterative refinement (Reduced to 1 pass for performance)
+	var predicted_pos = target.global_position
 	if "velocity" in target:
-		return target.global_position + (target.velocity * time_to_hit)
-	return target.global_position
+		predicted_pos += target.velocity * time_to_hit
+	
+	return predicted_pos
 
 func _handle_movement(delta: float) -> void:
 	var move_velocity = Vector2.ZERO
@@ -333,8 +394,7 @@ func _handle_movement(delta: float) -> void:
 		var effective_dist = dist - target_radius
 		
 		var threshold = attack_range * engagement_variance
-		var shield = _get_protecting_shield(target_enemy)
-		if shield:
+		if cached_shield: # Use cached shield
 			threshold = 600.0 
 		
 		# Combat Logic
@@ -365,7 +425,7 @@ func _handle_movement(delta: float) -> void:
 		
 		if distance > 5.0:
 			final_target_pos = move_target
-			use_nav = false # Direct movement, rely on Squad leader's pathfinding
+			use_nav = true # Always use pathfinding to avoid obstacles, even in formation
 			
 			# Speed mod
 			var speed_mult = 1.0
@@ -406,8 +466,10 @@ func _handle_movement(delta: float) -> void:
 		if holding_ground:
 			separation = Vector2.ZERO
 		else:
-			separation = _calculate_separation_force()
-			move_velocity += separation * 250.0
+			# Only calculate separation if we are moving or stuck
+			if move_velocity.length() > 0.1:
+				separation = _calculate_separation_force()
+				move_velocity += separation * 250.0
 
 	velocity = move_velocity + recoil_velocity
 	move_and_slide()
@@ -415,9 +477,9 @@ func _handle_movement(delta: float) -> void:
 func _get_base_speed_for_type() -> float:
 	# Helper to reset base speed which might be modified by Formation logic above
 	match unit_type:
-		UnitType.RANGED: return 325.0 * 1.5
-		UnitType.MELEE: return 400.0 * 1.5
-		UnitType.ROCKET: return 275.0 * 1.5
+		UnitType.RANGED: return 350.0
+		UnitType.MELEE: return 450.0
+		UnitType.ROCKET: return 275.0
 	return 300.0
 
 func _calculate_separation_force() -> Vector2:

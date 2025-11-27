@@ -10,6 +10,7 @@ var is_squad_active: bool = false
 
 func _ready() -> void:
 	super._ready()
+	add_to_group("factory")
 	if spawn_timer:
 		spawn_timer.wait_time = 10.0
 		spawn_timer.autostart = true

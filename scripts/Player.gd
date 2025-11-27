@@ -41,6 +41,10 @@ var _is_zoomed_out: bool = false
 var _show_range_timer: float = 0.0
 var _range_radius: float = 1000.0
 
+# COMMANDING
+var commanded_squads: Array = []
+var is_commanding_squads: bool = false
+
 func _ready() -> void:
 	add_to_group("unit")
 	current_hp = max_hp
@@ -125,10 +129,32 @@ func _physics_process(delta: float) -> void:
 	if mg_timer > 0:
 		mg_timer -= delta
 		
-	# Clamp Player Position (with margin)
-	var margin = 100.0
-	position.x = clamp(position.x, LIMIT_LEFT + margin, LIMIT_RIGHT - margin)
-	position.y = clamp(position.y, LIMIT_TOP + margin, LIMIT_BOTTOM - margin)
+	# Clamp Player Position (Dynamic from NavigationRegion if available)
+	var limit_left = LIMIT_LEFT
+	var limit_right = LIMIT_RIGHT
+	var limit_top = LIMIT_TOP
+	var limit_bottom = LIMIT_BOTTOM
+	
+	var nav_region = get_tree().root.find_child("NavigationRegion2D", true, false)
+	if nav_region and nav_region.navigation_polygon:
+		# FIX: Calculate bounds from outlines since get_polygon needs an index and returns indices
+		var poly = nav_region.navigation_polygon
+		var count = poly.get_outline_count()
+		if count > 0:
+			var outline = poly.get_outline(0) # Use the first outline (usually the main one)
+			if not outline.is_empty():
+				var r = Rect2(outline[0], Vector2.ZERO)
+				for pt in outline:
+					r = r.expand(pt)
+				
+				limit_left = r.position.x
+				limit_top = r.position.y
+				limit_right = r.end.x
+				limit_bottom = r.end.y
+
+	var margin = 50.0
+	position.x = clamp(position.x, limit_left + margin, limit_right - margin)
+	position.y = clamp(position.y, limit_top + margin, limit_bottom - margin)
 
 	if not is_active:
 		velocity = Vector2.ZERO
@@ -150,6 +176,12 @@ func _physics_process(delta: float) -> void:
 	# Spacebar Zoom Toggle
 	if Input.is_action_just_pressed("ui_select"): # Spacebar
 		_toggle_zoom_out()
+		
+	# COMMANDING INPUTS
+	if Input.is_action_just_pressed("command_squads"):
+		_start_commanding()
+	elif Input.is_action_just_pressed("release_squads"):
+		_stop_commanding()
 
 	var current_speed = speed
 	if Input.is_key_pressed(KEY_SHIFT):
@@ -162,15 +194,55 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 
 	move_and_slide()
+
+func _start_commanding() -> void:
+	if is_commanding_squads: return
 	
+	commanded_squads.clear()
+	
+	# Safer: Find children of the main UnitContainer
+	var unit_container = get_tree().root.find_child("UnitContainer", true, false)
+	if not unit_container:
+		print("UnitContainer not found!")
+		return
+		
+	var build_range = 2500.0 # Same as build range
+	var count = 0
+	
+	for child in unit_container.get_children():
+		if child.has_method("enter_command_mode"):
+			if "faction" in child and child.faction == faction:
+				if global_position.distance_to(child.global_position) <= build_range:
+					child.enter_command_mode(self)
+					commanded_squads.append(child)
+					count += 1
+	
+	if count > 0:
+		is_commanding_squads = true
+		print("Commanding ", count, " squads.")
+		show_range_indicator()
+	else:
+		print("No squads in range.")
+
+func _stop_commanding() -> void:
+	if not is_commanding_squads: return
+	
+	for squad in commanded_squads:
+		if is_instance_valid(squad):
+			squad.exit_command_mode()
+	
+	commanded_squads.clear()
+	is_commanding_squads = false
+	print("Released squads.")
+
 func show_range_indicator() -> void:
 	_show_range_timer = 0.05
 	queue_redraw()
 
 func _draw() -> void:
 	if _show_range_timer > 0:
-		# Static Red Outline (No fade, 0.05s duration)
-		draw_arc(Vector2.ZERO, _range_radius, 0, TAU, 64, Color(1, 0, 0, 0.8), 3.0)
+		var col = Color(0, 1, 0, 0.8) if is_commanding_squads else Color(1, 0, 0, 0.8)
+		draw_arc(Vector2.ZERO, _range_radius, 0, TAU, 64, col, 3.0)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_active: return
@@ -269,6 +341,14 @@ func shoot_mg_action() -> void:
 		
 	spawn_rot += randf_range(-spread_amount, spread_amount)
 	
+	# COMMAND SQUADS FIRE
+	if is_commanding_squads:
+		var aim_target = get_global_mouse_position()
+		# Offset aim target by random to simulate spread fire from group
+		for squad in commanded_squads:
+			if is_instance_valid(squad):
+				squad.command_fire_at(aim_target)
+
 	if GameManager.is_multiplayer:
 		# Only the Server (Host) owns the ProjectileSpawner and can spawn networked objects
 		if multiplayer.is_server():

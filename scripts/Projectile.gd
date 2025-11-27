@@ -91,7 +91,10 @@ func _trigger_impact(direct_hit_target: Node) -> void:
 		# Only deal damage if we own the shooter (or it's singleplayer)
 		if _should_deal_damage():
 			if direct_hit_target:
-				direct_hit_target.take_damage(damage)
+				var final_damage = damage
+				# Bonus vs Shield for Rockets (Explosive) is handled in _explode, 
+				# but if we wanted direct hit bonuses for others, we'd do it here.
+				direct_hit_target.take_damage(final_damage)
 			queue_free() # Only Authority deletes
 		else:
 			# Client visual hide
@@ -116,6 +119,10 @@ func _explode() -> void:
 	# 3. Deal Area Damage
 	if _should_deal_damage():
 		var potential_targets = get_tree().get_nodes_in_group(target_group)
+		# Also check for Shields if they aren't in target_group "unit" or "building"
+		var shields = get_tree().get_nodes_in_group("shield")
+		potential_targets.append_array(shields)
+		
 		for t in potential_targets:
 			if not is_instance_valid(t): continue
 			
@@ -127,7 +134,12 @@ func _explode() -> void:
 			var dist = global_position.distance_to(t.global_position)
 			if dist <= explosion_radius:
 				if t.has_method("take_damage"):
-					t.take_damage(damage)
+					var final_damage = damage
+					# Bonus: Rockets (Explosive) vs Shields
+					if t.is_in_group("shield") and explosion_radius > 0:
+						final_damage *= 3
+					
+					t.take_damage(final_damage)
 	
 	# 4. Visual Feedback
 	queue_redraw()

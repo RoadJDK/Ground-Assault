@@ -1,6 +1,6 @@
 extends Building
 
-@export var gold_per_tick: int = 2 
+@export var gold_per_tick: int = 2
 
 func _ready() -> void:
 	super._ready()
@@ -20,4 +20,5 @@ func _on_timer_timeout() -> void:
 	var main = get_tree().root.find_child("Main", true, false)
 	# Updated to pass faction to Main
 	if main and main.has_method("add_gold"):
-		main.add_gold(gold_per_tick, self.faction)
+		var amount = 200
+		main.add_gold(amount, self.faction)

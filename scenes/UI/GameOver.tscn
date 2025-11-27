@@ -1,5 +1,6 @@
-[gd_scene load_steps=3 format=3 uid="uid://bnij13c6frw40"]
+[gd_scene load_steps=4 format=3 uid="uid://bnij13c6frw40"]
 
+[ext_resource type="Theme" uid="uid://bxrpuuyid6a85" path="res://scenes/UI/Main.tres" id="1_6h40s"]
 [ext_resource type="Script" uid="uid://bofocj1r3n1e6" path="res://scripts/GameOver.gd" id="1_c5loy"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_d3dyj"]
@@ -12,6 +13,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("1_6h40s")
 script = ExtResource("1_c5loy")
 
 [node name="ColorRect" type="ColorRect" parent="."]
@@ -25,12 +27,14 @@ color = Color(0, 0, 0, 0.3254902)
 
 [node name="Label" type="Label" parent="."]
 layout_mode = 0
-offset_left = 629.0
-offset_top = 185.0
-offset_right = 1297.0
-offset_bottom = 322.0
+offset_left = 154.0
+offset_top = 226.0
+offset_right = 1754.0
+offset_bottom = 363.0
 text = "Battle Finished!"
 label_settings = SubResource("LabelSettings_d3dyj")
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 0
