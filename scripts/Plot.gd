@@ -20,7 +20,11 @@ func _ready() -> void:
 	for child in get_children():
 		if child is ColorRect:
 			_visual_rect = child
-			_visual_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			# Enable mouse events for hover detection
+			_visual_rect.mouse_filter = Control.MOUSE_FILTER_PASS
+			_visual_rect.mouse_entered.connect(_on_mouse_entered)
+			_visual_rect.mouse_exited.connect(_on_mouse_exited)
+			
 			# Make sure it's visible
 			_visual_rect.visible = true
 			# CRITICAL FIX: Draw the ColorRect BEHIND the parent's _draw() content
@@ -30,6 +34,26 @@ func _ready() -> void:
 			break
 	
 	queue_redraw()
+
+func _on_mouse_entered() -> void:
+	if building_instance and "faction" in building_instance:
+		# Only consider interactive if it's OUR building (so we can sell it)
+		# We need to find the local player to check faction match
+		var active_player = _get_local_active_player()
+		if active_player and active_player.faction == building_instance.faction:
+			active_player.is_hovering_interactive = true
+
+func _on_mouse_exited() -> void:
+	var active_player = _get_local_active_player()
+	if active_player:
+		active_player.is_hovering_interactive = false
+
+func _get_local_active_player() -> Node2D:
+	var players = get_tree().get_nodes_in_group("unit")
+	for p in players:
+		if p.name.begins_with("Player") and "is_active" in p and p.is_active:
+			return p
+	return null
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -128,6 +152,9 @@ func _replace_building(scene: PackedScene, type_name: String, faction: String, u
 	var new_building = scene.instantiate()
 	new_building.z_index = 10 
 	
+	# Store type name for selling later
+	new_building.set_meta("type_name", type_name)
+	
 	new_building.tree_exiting.connect(_on_building_destroyed)
 	
 	if "faction" in new_building:
@@ -156,9 +183,34 @@ func _sell_building() -> void:
 			print("Cannot sell Core buildings!")
 			return
 
+		# --- REFUND LOGIC ---
+		var type_name = ""
+		if building_instance.has_meta("type_name"):
+			type_name = building_instance.get_meta("type_name")
+		
+		if type_name != "":
+			var main = get_tree().root.find_child("Main", true, false)
+			if main and "building_costs" in main and main.has_method("add_gold"):
+				var cost = main.building_costs.get(type_name, 0)
+				var refund = int(cost / 2.0)
+				if refund > 0:
+					var f = "neutral"
+					if "faction" in building_instance:
+						f = building_instance.faction
+					
+					main.add_gold(refund, f)
+					print("Sold ", type_name, " for ", refund, " gold.")
+		# --------------------
+
 		building_instance.queue_free()
 		building_instance = null
 		_update_plot_color("neutral")
+		
+		# Force clear hover state since building is gone
+		var active_player = _get_local_active_player()
+		if active_player:
+			active_player.is_hovering_interactive = false
+			
 		queue_redraw()
 
 func _on_building_destroyed() -> void:

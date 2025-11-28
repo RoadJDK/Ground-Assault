@@ -17,8 +17,8 @@ var visual_node: CanvasItem = null
 var weapon_node = null # Untyped to support Node2D or Control (ColorRect)
 
 # HP & Faction
-var max_hp: int = 150
-var current_hp: int = 150
+var max_hp: int = 450
+var current_hp: int = 450
 var faction: String = "neutral"
 
 # Weapon Stats
@@ -30,6 +30,9 @@ var mg_timer: float = 0.0
 # Range Indicator
 var _show_range_timer: float = 0.0
 var _range_radius: float = 1000.0
+
+# INTERACTION STATE
+var is_hovering_interactive: bool = false
 
 # COMMANDING
 var commanded_squads: Array = []
@@ -213,9 +216,9 @@ func _draw() -> void:
 	
 	# HP Bar
 	if current_hp < max_hp:
-		var bar_width = 60.0
-		var bar_height = 6.0
-		var y_offset = -55.0
+		var bar_width = 135.0
+		var bar_height = 14.0
+		var y_offset = -100.0
 		
 		# Background
 		draw_rect(Rect2(-bar_width/2, y_offset, bar_width, bar_height), Color(0, 0, 0, 0.6))
@@ -236,6 +239,9 @@ func _unhandled_input(_event: InputEvent) -> void:
 	pass # Delegate all camera inputs to CameraControl
 
 func _shoot_mg() -> void:
+	# Prevent shooting if interacting with UI/Plots
+	if is_hovering_interactive: return
+
 	# Prevent RPC spam by checking locally first
 	if mg_timer > 0: return
 
@@ -287,7 +293,7 @@ func shoot_mg_action() -> void:
 		
 		# Add Screenshake for feedback
 		if camera and camera.has_method("add_trauma"):
-			camera.add_trauma(0.15)
+			camera.add_trauma(0.03)
 			
 	# Play SFX
 	if SFXManager:
@@ -304,12 +310,15 @@ func shoot_mg_action() -> void:
 	# COMMAND SQUADS FIRE
 	if is_commanding_squads:
 		var aim_target = get_global_mouse_position()
+		var squad_index = 0
 		for squad in commanded_squads:
 			if is_instance_valid(squad):
-				# Buffer shots: Add a small random delay to each squad's fire command
-				get_tree().create_timer(randf_range(0.0, 0.15)).timeout.connect(
+				# Sequential Firing: 0.5s delay between each squad
+				var delay = squad_index * 0.5
+				get_tree().create_timer(delay).timeout.connect(
 					func(): if is_instance_valid(squad): squad.command_fire_at(aim_target)
 				)
+				squad_index += 1
 
 	if GameManager.is_multiplayer:
 		# Only the Server (Host) owns the ProjectileSpawner and can spawn networked objects
@@ -354,21 +363,29 @@ func set_active(active: bool) -> void:
 			if camera.has_method("toggle_overview") and camera.is_overview_mode:
 				camera.toggle_overview()
 
-func take_damage(amount: int) -> void:
+func take_damage(amount: int, source_type: String = "") -> void:
 	if GameManager.is_multiplayer:
-		rpc("rpc_take_damage", amount)
+		rpc("rpc_take_damage", amount, source_type)
 	else:
-		rpc_take_damage(amount)
+		rpc_take_damage(amount, source_type)
 
 @rpc("any_peer", "call_local")
-func rpc_take_damage(amount: int) -> void:
-	current_hp -= amount
-	print(name, " took damage: ", amount, " | HP: ", current_hp)
+func rpc_take_damage(amount: int, source_type: String = "") -> void:
+	var final_amount = amount
+	if source_type == "turret":
+		final_amount = int(amount / 1.5)
+		if final_amount < 1: final_amount = 1
+	elif source_type == "player":
+		final_amount *= 4
+	
+	current_hp -= final_amount
+	print(name, " took ", final_amount, " damage (Source: ", source_type, ") | HP: ", current_hp)
 	queue_redraw() # Update HP Bar
 	
 	# Visual Feedback
 	if camera and camera.has_method("add_trauma"):
-		var trauma = clamp(float(amount) / 20.0, 0.2, 0.8)
+		# Shake based on damage amount (reduced intensity)
+		var trauma = clamp(float(final_amount) / 30.0, 0.1, 0.25)
 		camera.add_trauma(trauma)
 	
 	if current_hp <= 0:

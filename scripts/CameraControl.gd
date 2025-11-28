@@ -26,8 +26,8 @@ var _saved_zoom: Vector2 = Vector2.ONE
 
 # --- JUICE ---
 var _shake_strength: float = 0.0
-var _shake_decay: float = 5.0
-var _max_offset: Vector2 = Vector2(100, 70) # Doubled from (50, 35)
+var _shake_decay: float = 3.0 # Reduced from 5.0 to make shake last longer
+var _max_offset: Vector2 = Vector2(33, 23) # Decreased by another 2x (33, 23)
 var _sway_offset: Vector2 = Vector2.ZERO # Smoothed sway component
 
 var _prev_mouse_pos: Vector2 = Vector2.ZERO

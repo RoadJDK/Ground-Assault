@@ -43,11 +43,12 @@ func _ready() -> void:
 		_start_game_music()
 
 func on_player_death() -> void:
-	_stop_all()
+	heat_level = 0.0 # Reset intensity
+	_pause_all()
 	await get_tree().create_timer(1.0).timeout
 	# Only restart if still in game mode (didn't quit to menu)
 	if current_mode == Mode.GAME:
-		_start_game_music()
+		_resume_game_music()
 
 func _create_player(stream: AudioStream, node_name: String) -> AudioStreamPlayer:
 	var p = AudioStreamPlayer.new()
@@ -60,22 +61,25 @@ func _create_player(stream: AudioStream, node_name: String) -> AudioStreamPlayer
 func _start_menu_music() -> void:
 	current_mode = Mode.MENU
 	_stop_all()
+	
+	# Start Intro at Full Volume
 	player_intro.volume_db = 0.0
 	player_intro.play()
+	
+	# Start Base at Silent (Looping)
+	player_base.volume_db = -80.0
+	player_base.play()
 
 func _on_intro_finished() -> void:
-	if current_mode == Mode.MENU:
-		# Transition to Base Loop
-		if not player_base.playing:
-			player_base.volume_db = 0.0
-			player_base.play()
+	# Logic handled by crossfade in _process
+	pass
 
 func _start_game_music() -> void:
 	current_mode = Mode.GAME
 	_stop_all()
 	
 	# Start Base + All Layers (synced)
-	player_base.volume_db = 0.0
+	player_base.volume_db = -80.0 # Start silent and fade in
 	player_base.play()
 	
 	# Start intensities silent
@@ -87,17 +91,62 @@ func _start_game_music() -> void:
 	player_int2.play()
 	player_int3.play()
 
+func _resume_game_music() -> void:
+	# Reset volumes to silent to allow fade-in
+	player_int1.volume_db = -80.0
+	player_int2.volume_db = -80.0
+	player_int3.volume_db = -80.0
+	# Base track might want to fade in too? 
+	# Let's keep base track at current volume or reset?
+	# User said "fade back in".
+	# Resetting base to -80 ensures fade in if _update_volumes handles it.
+	player_base.volume_db = -80.0
+	
+	player_base.stream_paused = false
+	player_int1.stream_paused = false
+	player_int2.stream_paused = false
+	player_int3.stream_paused = false
+
 func _stop_all() -> void:
 	player_intro.stop()
 	player_base.stop()
 	player_int1.stop()
 	player_int2.stop()
 	player_int3.stop()
+	
+	# Reset pause state just in case
+	player_intro.stream_paused = false
+	player_base.stream_paused = false
+	player_int1.stream_paused = false
+	player_int2.stream_paused = false
+	player_int3.stream_paused = false
+
+func _pause_all() -> void:
+	player_base.stream_paused = true
+	player_int1.stream_paused = true
+	player_int2.stream_paused = true
+	player_int3.stream_paused = true
 
 func _process(delta: float) -> void:
 	if current_mode == Mode.GAME:
 		_update_heat(delta)
 		_update_volumes(delta)
+	elif current_mode == Mode.MENU:
+		_update_menu_crossfade(delta)
+
+func _update_menu_crossfade(delta: float) -> void:
+	if player_intro.playing:
+		var stream_len = player_intro.stream.get_length()
+		var pos = player_intro.get_playback_position()
+		var remaining = stream_len - pos
+		
+		# Start fading in Base 5 seconds before Intro ends
+		if remaining < 5.0:
+			player_base.volume_db = move_toward(player_base.volume_db, 0.0, fade_speed * 2.0 * delta)
+	else:
+		# Ensure Base is fully audible if Intro finished
+		if player_base.playing:
+			player_base.volume_db = move_toward(player_base.volume_db, 0.0, fade_speed * 5.0 * delta)
 
 func _update_heat(delta: float) -> void:
 	var target_heat = 0.0
@@ -143,12 +192,12 @@ func _update_heat(delta: float) -> void:
 		target_heat = enemy_count * 2.0
 		
 		# 4. HP Stress
-		# Increased threshold: < 60% HP adds heat
-		if my_hero.current_hp < (my_hero.max_hp * 0.6):
+		# Only add stress if enemies are present (Combat active)
+		if enemy_count > 0 and my_hero.current_hp < (my_hero.max_hp * 0.6):
 			target_heat += 10.0
 			
-	# Smoothly interpolate heat
-	heat_level = lerp(heat_level, target_heat, delta * 0.5) # Slow changing heat
+	# Linear Decay/Growth (1 heat per second decay when safe)
+	heat_level = move_toward(heat_level, target_heat, 1.0 * delta)
 
 func _update_volumes(delta: float) -> void:
 	var target_db_1 = -80.0
@@ -184,7 +233,9 @@ func _update_volumes(delta: float) -> void:
 			target_db_1 = 0.0
 		
 	# Apply smooth fade
-	player_base.volume_db = move_toward(player_base.volume_db, target_db_base, fade_speed * 60.0 * delta)
+	# Slower fade for Base track to allow nice intro/resume transition
+	player_base.volume_db = move_toward(player_base.volume_db, target_db_base, fade_speed * 5.0 * delta) 
+	
 	player_int1.volume_db = move_toward(player_int1.volume_db, target_db_1, fade_speed * 60.0 * delta)
 	player_int2.volume_db = move_toward(player_int2.volume_db, target_db_2, fade_speed * 60.0 * delta)
 	player_int3.volume_db = move_toward(player_int3.volume_db, target_db_3, fade_speed * 60.0 * delta)

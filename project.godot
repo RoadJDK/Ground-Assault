@@ -124,6 +124,7 @@ common/max_physics_steps_per_frame=16
 
 [rendering]
 
+textures/vram_compression/import_etc2_astc=true
 global_illumination/voxel_gi/quality=1
 camera/depth_of_field/depth_of_field_bokeh_quality=3
 viewport/hdr_2d=true

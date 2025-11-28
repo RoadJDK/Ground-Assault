@@ -47,6 +47,9 @@ offset_bottom = 873.0
 layout_mode = 2
 text = "RESTART"
 
-[node name="QuitButton" type="Button" parent="VBoxContainer"]
+[node name="MenuButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
-text = "QUIT"
+text = "GO BACK TO MENU"
+
+[connection signal="pressed" from="VBoxContainer/RestartButton" to="." method="_on_restart_button_pressed"]
+[connection signal="pressed" from="VBoxContainer/MenuButton" to="." method="_on_menu_button_pressed"]

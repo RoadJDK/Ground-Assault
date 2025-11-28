@@ -1,11 +1,21 @@
 extends Area2D
 
+# Map Limits (Matches Player.gd)
+const LIMIT_LEFT: float = -12500.0
+const LIMIT_TOP: float = -7000.0
+const LIMIT_RIGHT: float = 12500.0 
+const LIMIT_BOTTOM: float = 7000.0 
+
 var damage: int = 0
 var speed: float = 0.0
 var target_group: String = ""
 var shooter: Node2D = null 
 var life_timer: float = 20.0
 var explosion_radius: float = 0.0
+
+var start_position: Vector2 = Vector2.ZERO
+var max_travel_distance: float = 4050.0 # Approx 1/6th of Map Width (Reduced from 8100)
+var _is_fading: bool = false
 
 var _exploded: bool = false
 var _faction_color: Color = Color(1.5, 1.5, 0.5) # Default Yellow (HDR)
@@ -25,6 +35,17 @@ func setup(dmg: int, spd: float, group: String, source_node: Node2D = null, radi
 	target_group = group
 	shooter = source_node
 	explosion_radius = radius
+	
+	start_position = global_position
+	
+	# Logic for Range Limiting
+	# Default is 8100 (1/3 Map) for MGs and Troop Rockets
+	
+	# Exception: Turret Howitzers are UNLIMITED
+	# Howitzer/Rocket is identified by radius >= 100.0 (Troop=250, Turret=200)
+	if explosion_radius >= 100.0 and is_instance_valid(shooter) and shooter.is_in_group("turret"):
+		max_travel_distance = INF
+	
 	add_to_group("projectile")
 	
 	# Colorize based on shooter faction
@@ -42,8 +63,14 @@ func _physics_process(delta: float) -> void:
 	var direction = Vector2.RIGHT.rotated(rotation)
 	position += direction * speed * delta
 	
-	# Bounds Check
-	if global_position.x < -6500 or global_position.x > 6500 or global_position.y < -4000 or global_position.y > 4000:
+	# Range Check
+	if not _is_fading and max_travel_distance != INF:
+		if global_position.distance_to(start_position) > max_travel_distance:
+			_fade_and_die()
+			return
+	
+	# Bounds Check (Updated)
+	if global_position.x < LIMIT_LEFT or global_position.x > LIMIT_RIGHT or global_position.y < LIMIT_TOP or global_position.y > LIMIT_BOTTOM:
 		queue_free()
 		return
 	
@@ -54,6 +81,18 @@ func _physics_process(delta: float) -> void:
 				queue_free()
 		else:
 			queue_free()
+
+func _fade_and_die() -> void:
+	if _is_fading: return
+	_is_fading = true
+	
+	# Disable collisions
+	set_deferred("monitoring", false)
+	set_deferred("monitorable", false)
+	
+	var tween = create_tween()
+	tween.tween_property(self, "modulate:a", 0.0, 0.2) # Fast fade
+	tween.tween_callback(queue_free)
 
 func _on_body_entered(body: Node) -> void:
 	if _exploded: return
@@ -115,6 +154,14 @@ func _explode(direct_hit_target: Node = null) -> void:
 	if SFXManager:
 		if explosion_radius > 50.0:
 			SFXManager.play_hit_howitzer(global_position)
+			
+			# Screen Shake for nearby heavy explosions
+			var cam = get_viewport().get_camera_2d()
+			if cam and cam.has_method("add_trauma"):
+				var dist_to_cam = global_position.distance_to(cam.global_position)
+				if dist_to_cam < 1500.0:
+					var shake_amount = 0.25 * (1.0 - (dist_to_cam / 1500.0))
+					cam.add_trauma(shake_amount)
 		else:
 			SFXManager.play_hit_mg(global_position)
 	
@@ -135,6 +182,8 @@ func _explode(direct_hit_target: Node = null) -> void:
 		if is_instance_valid(shooter):
 			if shooter.is_in_group("turret") or shooter.name.contains("Turret"):
 				source_type = "turret"
+			elif shooter.name.contains("Player"):
+				source_type = "player"
 			elif shooter.is_in_group("unit"):
 				source_type = "unit"
 

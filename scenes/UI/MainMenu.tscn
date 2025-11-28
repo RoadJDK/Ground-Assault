@@ -2,7 +2,7 @@
 
 [ext_resource type="Theme" uid="uid://bxrpuuyid6a85" path="res://scenes/UI/Main.tres" id="1_3h7gc"]
 [ext_resource type="Script" uid="uid://cprwqsa5cr7ow" path="res://scripts/MainMenu.gd" id="1_11hie"]
-[ext_resource type="Texture2D" uid="uid://eshuwiuul2vy" path="res://assets/PixelCommandMenu.png" id="2_58fj5"]
+[ext_resource type="Texture2D" uid="uid://bcvyec6plxwek" path="res://assets/PixelCommandMenu.png" id="2_58fj5"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -19,21 +19,23 @@ texture = ExtResource("2_58fj5")
 expand_mode = 2
 
 [node name="SingleplayerButton" type="Button" parent="."]
+visible = false
 layout_mode = 0
-offset_left = 569.0
-offset_top = 444.0
-offset_right = 1355.0
-offset_bottom = 567.0
+offset_left = 488.0
+offset_top = 442.0
+offset_right = 1438.0
+offset_bottom = 556.0
 size_flags_vertical = 3
 text = "Singleplayer"
 flat = true
 
 [node name="MultiplayerButton" type="Button" parent="."]
+visible = false
 layout_mode = 0
-offset_left = 568.0
-offset_top = 587.0
-offset_right = 1354.0
-offset_bottom = 709.0
+offset_left = 485.0
+offset_top = 583.0
+offset_right = 1435.0
+offset_bottom = 696.0
 size_flags_vertical = 3
 text = "Multiplayer"
 flat = true
@@ -41,31 +43,31 @@ flat = true
 [node name="SettingsButton" type="Button" parent="."]
 visible = false
 layout_mode = 0
-offset_left = 568.0
-offset_top = 716.0
-offset_right = 1354.0
-offset_bottom = 838.0
+offset_left = 488.0
+offset_top = 723.0
+offset_right = 1436.0
+offset_bottom = 837.0
 size_flags_vertical = 3
 text = "Settings"
 flat = true
 
 [node name="QuitButton" type="Button" parent="."]
+visible = false
 layout_mode = 0
-offset_left = 568.0
-offset_top = 841.0
-offset_right = 1354.0
-offset_bottom = 963.0
+offset_left = 487.0
+offset_top = 863.0
+offset_right = 1438.0
+offset_bottom = 977.0
 size_flags_vertical = 3
 text = "Quit"
 flat = true
 
 [node name="HostButton" type="Button" parent="."]
-visible = false
 layout_mode = 0
-offset_left = 568.0
-offset_top = 444.0
-offset_right = 1354.0
-offset_bottom = 568.0
+offset_left = 488.0
+offset_top = 442.0
+offset_right = 1436.0
+offset_bottom = 556.0
 size_flags_vertical = 3
 text = "Host Game (Blue)"
 flat = true
@@ -73,20 +75,19 @@ flat = true
 [node name="IPText" type="LineEdit" parent="."]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 0
-offset_left = 567.0
-offset_top = 716.0
-offset_right = 1353.0
-offset_bottom = 839.0
+offset_left = 487.0
+offset_top = 724.0
+offset_right = 1438.0
+offset_bottom = 838.0
 placeholder_text = "Enter IP (Default 127.0.0.1)"
 alignment = 1
 
 [node name="JoinButton" type="Button" parent="."]
-visible = false
 layout_mode = 0
-offset_left = 567.0
-offset_top = 586.0
-offset_right = 1353.0
-offset_bottom = 709.0
+offset_left = 487.0
+offset_top = 584.0
+offset_right = 1437.0
+offset_bottom = 697.0
 size_flags_vertical = 3
 text = "Join Game (Red)"
 flat = true
@@ -99,12 +100,11 @@ offset_right = 1353.0
 offset_bottom = 991.0
 
 [node name="BackButton" type="Button" parent="."]
-visible = false
 layout_mode = 0
-offset_left = 567.0
-offset_top = 841.0
-offset_right = 1353.0
-offset_bottom = 963.0
+offset_left = 487.0
+offset_top = 863.0
+offset_right = 1436.0
+offset_bottom = 977.0
 size_flags_vertical = 3
 text = "Back"
 flat = true

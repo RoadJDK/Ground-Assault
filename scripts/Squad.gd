@@ -128,9 +128,15 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, 130.0, 0, TAU, 32, Color(0, 1, 0, 0.8), 4.0, true)
 
 func command_fire_at(pos: Vector2) -> void:
+	var idx = 0
 	for child in get_children():
 		if child is Troop:
-			child.force_attack_at(pos)
+			# Stagger troop fire slightly to avoid "wall of bullets"
+			var delay = idx * 0.04 + randf_range(0.0, 0.1)
+			get_tree().create_timer(delay).timeout.connect(
+				func(): if is_instance_valid(child): child.force_attack_at(pos)
+			)
+			idx += 1
 
 func setup_squad_formation(cols: int, rows: int) -> void:
 	var troop_scene_path = "res://scenes/Troops/Types/Ranged.tscn"

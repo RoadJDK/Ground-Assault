@@ -27,9 +27,9 @@ func die() -> void:
 
 func _draw() -> void:
 	if current_hp < max_hp:
-		var bar_width = 90.0
-		var bar_height = 9.0
-		var y_offset = -80.0 # Position above building
+		var bar_width = 135.0
+		var bar_height = 14.0
+		var y_offset = -100.0 # Position above building
 		
 		# Background
 		draw_rect(Rect2(-bar_width/2, y_offset, bar_width, bar_height), Color(0, 0, 0, 0.6))
