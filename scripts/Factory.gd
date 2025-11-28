@@ -61,6 +61,9 @@ func spawn_squad() -> void:
 		unit_container.add_child(squad, true)
 		squad.global_position = global_position
 		
+		# Play Spawn Sound
+		if SFXManager: SFXManager.play_factory_spawn(global_position)
+		
 		current_squad = squad
 		is_squad_active = true
 		

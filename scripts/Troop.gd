@@ -287,9 +287,8 @@ func force_attack_at(target_pos: Vector2) -> void:
 		# Melee can only hit if actually close, so this might be ineffective at range
 		# We check distance to target pos
 		if global_position.distance_to(target_pos) <= attack_range + 20.0:
-			# Try to find an enemy at that location to damage
-			# Note: This is a simple approximation.
-			pass
+			# Play Melee SFX
+			if SFXManager: SFXManager.play_melee_attack(global_position)
 	else:
 		if projectile_scene:
 			var spawn_rot = dir
@@ -299,6 +298,13 @@ func force_attack_at(target_pos: Vector2) -> void:
 			if velocity.length() > 10.0:
 				spread_amount = 0.1
 			spawn_rot += randf_range(-spread_amount, spread_amount)
+			
+			# Play SFX
+			if SFXManager:
+				if unit_type == UnitType.ROCKET:
+					SFXManager.play_rocket_shot(global_position)
+				elif unit_type == UnitType.RANGED:
+					SFXManager.play_ranged_shot(global_position)
 			
 			var final_dmg = damage
 			if GameManager.is_multiplayer:
@@ -331,6 +337,8 @@ func _attack_target() -> void:
 	
 	if unit_type == UnitType.MELEE:
 		if target_enemy.has_method("take_damage"):
+			if SFXManager: SFXManager.play_melee_attack(global_position)
+			
 			var final_dmg = damage
 			# Melee Bonus vs Buildings
 			if target_enemy.is_in_group("building"):
@@ -338,6 +346,13 @@ func _attack_target() -> void:
 			target_enemy.take_damage(final_dmg)
 	else:
 		if projectile_scene:
+			# Play SFX
+			if SFXManager:
+				if unit_type == UnitType.ROCKET:
+					SFXManager.play_rocket_shot(global_position)
+				elif unit_type == UnitType.RANGED:
+					SFXManager.play_ranged_shot(global_position)
+			
 			var aim_pos = _get_predicted_position(target_enemy, attack_speed)
 			var dir = (aim_pos - global_position).angle()
 			var spawn_rot = dir

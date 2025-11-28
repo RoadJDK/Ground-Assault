@@ -3,18 +3,13 @@ extends CharacterBody2D
 @export var speed: float = 600.0
 @export var sprint_speed: float = 1200.0
 
-# Zoom Settings
-@export var min_zoom: float = 0.5
-@export var max_zoom: float = 72.0
-@export var zoom_step: float = 0.1
-
 const PROJ_MG_SCENE = preload("res://scenes/Projectiles/ProjectileMG.tscn")
 
-# Map Limits for Zoom Calculation
-const LIMIT_LEFT: float = -6956.0
-const LIMIT_TOP: float = -4622.0
-const LIMIT_RIGHT: float = 6974.0 
-const LIMIT_BOTTOM: float = 4699.0 
+# Map Limits (Keep for Player clamping)
+const LIMIT_LEFT: float = -12251.0
+const LIMIT_TOP: float = -6666.0
+const LIMIT_RIGHT: float = 12293.0 
+const LIMIT_BOTTOM: float = 6650.0 
 
 var is_active: bool = true
 var camera: Camera2D = null
@@ -22,8 +17,8 @@ var visual_node: CanvasItem = null
 var weapon_node = null # Untyped to support Node2D or Control (ColorRect)
 
 # HP & Faction
-var max_hp: int = 100
-var current_hp: int = 100
+var max_hp: int = 150
+var current_hp: int = 150
 var faction: String = "neutral"
 
 # Weapon Stats
@@ -31,11 +26,6 @@ var mg_damage: int = 3
 var mg_speed: float = 1500.0
 var mg_cooldown: float = 0.066 # 1.5x faster (was 0.1)
 var mg_timer: float = 0.0
-
-# Camera State
-var _target_zoom: Vector2 = Vector2.ONE
-var _saved_zoom: Vector2 = Vector2.ONE
-var _is_zoomed_out: bool = false
 
 # Range Indicator
 var _show_range_timer: float = 0.0
@@ -72,10 +62,6 @@ func _ready() -> void:
 	
 	# Find Camera
 	camera = find_child("Camera2D", true, false)
-	if camera:
-		camera.position_smoothing_enabled = false # Disable built-in smoothing
-		_target_zoom = camera.zoom
-		_saved_zoom = camera.zoom
 	
 	# Find Visual (Sprite or ColorRect)
 	for child in get_children():
@@ -94,41 +80,12 @@ func _physics_process(delta: float) -> void:
 	if GameManager.is_multiplayer:
 		if not is_multiplayer_authority():
 			# We are a remote puppet. 
-			# Position is synced automatically by MultiplayerSynchronizer.
-			# We just ensure we don't override it with local physics or camera logic
 			return 
 
 	if _show_range_timer > 0:
 		_show_range_timer -= delta
 		queue_redraw()
 
-	# Camera Smoothing
-	if camera:
-		var lerp_speed = 5.0
-		
-		# Zoom Smoothing
-		if not is_equal_approx(camera.zoom.x, _target_zoom.x):
-			var new_zoom = lerp(camera.zoom.x, _target_zoom.x, lerp_speed * delta)
-			camera.zoom = Vector2(new_zoom, new_zoom)
-			
-		# Position Smoothing
-		# If zoomed out, target is (0,0). If zoomed in, target is player (global_position).
-		# We ALWAYS manage global_position when detached (top_level = true).
-		if camera.top_level:
-			var target_pos = Vector2.ZERO
-			if not _is_zoomed_out:
-				target_pos = global_position
-			
-			camera.global_position = camera.global_position.lerp(target_pos, lerp_speed * delta)
-			
-			# Re-attach when close to player
-			if not _is_zoomed_out and camera.global_position.distance_to(target_pos) < 10.0 and is_equal_approx(camera.zoom.x, _target_zoom.x):
-				camera.top_level = false
-				camera.position = Vector2.ZERO
-
-	if mg_timer > 0:
-		mg_timer -= delta
-		
 	# Clamp Player Position (Dynamic from NavigationRegion if available)
 	var limit_left = LIMIT_LEFT
 	var limit_right = LIMIT_RIGHT
@@ -175,7 +132,8 @@ func _physics_process(delta: float) -> void:
 		
 	# Spacebar Zoom Toggle
 	if Input.is_action_just_pressed("ui_select"): # Spacebar
-		_toggle_zoom_out()
+		if camera and camera.has_method("toggle_overview"):
+			camera.toggle_overview()
 		
 	# COMMANDING INPUTS
 	if Input.is_action_just_pressed("command_squads"):
@@ -187,6 +145,7 @@ func _physics_process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_SHIFT):
 		current_speed = sprint_speed
 	
+	# Movement (Allowed in both Close and Tactical views)
 	var direction = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	if direction:
 		velocity = direction * current_speed
@@ -198,9 +157,6 @@ func _physics_process(delta: float) -> void:
 func _start_commanding() -> void:
 	# Removed "if is_commanding_squads: return" to allow adding more squads
 	
-	# Don't clear commanded_squads if you want to ADD. 
-	# commanded_squads.clear() 
-	
 	# Safer: Find children of the main UnitContainer
 	var unit_container = get_tree().root.find_child("UnitContainer", true, false)
 	if not unit_container:
@@ -209,7 +165,6 @@ func _start_commanding() -> void:
 		
 	# Use the same radius as the visual indicator
 	var collection_range = _range_radius
-	var count = 0
 	var added_count = 0
 	
 	for child in unit_container.get_children():
@@ -251,71 +206,34 @@ func show_range_indicator() -> void:
 	queue_redraw()
 
 func _draw() -> void:
+	# Range Indicator
 	if _show_range_timer > 0:
 		var col = Color(0, 1, 0, 0.8) if is_commanding_squads else Color(1, 0, 0, 0.8)
-		# Added antialiasing = true
 		draw_arc(Vector2.ZERO, _range_radius, 0, TAU, 64, col, 3.0, true)
-
-func _unhandled_input(event: InputEvent) -> void:
-	if not is_active: return
 	
-	if GameManager.is_multiplayer and not is_multiplayer_authority():
-		return # Ignore inputs if not mine
+	# HP Bar
+	if current_hp < max_hp:
+		var bar_width = 60.0
+		var bar_height = 6.0
+		var y_offset = -55.0
+		
+		# Background
+		draw_rect(Rect2(-bar_width/2, y_offset, bar_width, bar_height), Color(0, 0, 0, 0.6))
+		
+		# Foreground Color
+		var hp_col = Color(0.2, 0.8, 0.2) # Default Green
+		if faction == "blue": hp_col = Color(0.3, 0.6, 1.0)
+		elif faction == "red": hp_col = Color(1.0, 0.4, 0.4)
+		
+		# Fill
+		var fill_pct = float(current_hp) / float(max_hp)
+		draw_rect(Rect2(-bar_width/2, y_offset, bar_width * fill_pct, bar_height), hp_col)
+		
+		# Border
+		draw_rect(Rect2(-bar_width/2, y_offset, bar_width, bar_height), Color.BLACK, false, 1.0)
 
-	if event is InputEventMouseButton:
-		if _is_zoomed_out:
-			# Only allow zooming IN (which exits overview)
-			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				_toggle_zoom_out()
-			return
-			
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_change_zoom(zoom_step)
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_change_zoom(-zoom_step)
-
-func _change_zoom(amount: float) -> void:
-	# If zoomed out, ignore manual zoom or reset?
-	# Let's allow manual zoom only when NOT in overview mode, or switch back to player mode.
-	if _is_zoomed_out:
-		_toggle_zoom_out() # Switch back to player
-		return
-	
-	var new_val = _saved_zoom.x + amount
-	new_val = clamp(new_val, min_zoom, max_zoom)
-	_saved_zoom = Vector2(new_val, new_val)
-	_target_zoom = _saved_zoom
-
-func _toggle_zoom_out() -> void:
-	if not camera: return
-	
-	if _is_zoomed_out:
-		# Zoom IN (Restore to Player)
-		_is_zoomed_out = false
-		_target_zoom = _saved_zoom
-		# Keep top_level = true until it moves back to player (handled in process)
-	else:
-		# Zoom OUT (Battlefield Center)
-		_is_zoomed_out = true
-		_saved_zoom = camera.zoom # Save current before flying out
-		
-		# Important: Set top_level true AND update position to match player immediately
-		# This prevents the "jump" from (0,0) if it wasn't detached
-		if not camera.top_level:
-			camera.top_level = true 
-			camera.global_position = global_position
-		
-		# Calculate needed zoom to see map
-		var vp_size = get_viewport_rect().size
-		var map_w = LIMIT_RIGHT - LIMIT_LEFT
-		var map_h = LIMIT_BOTTOM - LIMIT_TOP
-		var required_zoom = max(vp_size.x / map_w, vp_size.y / map_h)
-		
-		# Ensure we don't zoom in if the map is smaller than screen (unlikely)
-		# And apply some margin (0.9 factor)
-		required_zoom = min(required_zoom, 1.0) * 0.9
-		
-		_target_zoom = Vector2(required_zoom, required_zoom)
+func _unhandled_input(_event: InputEvent) -> void:
+	pass # Delegate all camera inputs to CameraControl
 
 func _shoot_mg() -> void:
 	# Prevent RPC spam by checking locally first
@@ -330,7 +248,17 @@ func _shoot_mg() -> void:
 func shoot_mg_action() -> void:
 	if mg_timer > 0: return
 	
+	var in_overview = false
+	if camera and "is_overview_mode" in camera:
+		in_overview = camera.is_overview_mode
+	
+	# Close View Benefit: Active unless in Spacebar-Overview mode
+	var is_close_view = !in_overview
+	
+	# Close View Benefit: 1.5x Fire Rate (0.66 multiplier)
 	mg_timer = mg_cooldown
+	if is_close_view:
+		mg_timer *= 0.66
 	
 	var spawn_pos = global_position
 	var spawn_rot = 0.0
@@ -346,12 +274,32 @@ func shoot_mg_action() -> void:
 		spawn_rot = (get_global_mouse_position() - global_position).angle()
 	
 	# Dynamic Spread
-	var spread_amount = 0.05 # Base spread
-	if velocity.length() > 10.0:
-		spread_amount = 0.1 # Moving spread
-		spawn_pos += Vector2(randf_range(-5, 5), randf_range(-5, 5))
+	if not is_close_view: # Close View Benefit: Reduced Spread (not zero)
+		var spread_amount = 0.05 # Base spread
+		if velocity.length() > 10.0:
+			spread_amount = 0.1 # Moving spread
+			spawn_pos += Vector2(randf_range(-5, 5), randf_range(-5, 5))
+			
+		spawn_rot += randf_range(-spread_amount, spread_amount)
+	else:
+		# Tiny spread for "alive" feel in Close View
+		spawn_rot += randf_range(-0.02, 0.02)
 		
-	spawn_rot += randf_range(-spread_amount, spread_amount)
+		# Add Screenshake for feedback
+		if camera and camera.has_method("add_trauma"):
+			camera.add_trauma(0.15)
+			
+	# Play SFX
+	if SFXManager:
+		var extra_vol = 0.0
+		# Dampen player shot if camera is zoomed out in Detail Mode
+		if camera:
+			# Map zoom 0.35 -> -6.0dB, Zoom 1.0 -> 0.0dB
+			var t = inverse_lerp(0.35, 1.0, camera.zoom.x)
+			t = clamp(t, 0.0, 1.0)
+			extra_vol = lerp(-6.0, 0.0, t)
+			
+		SFXManager.play_player_shot(global_position, extra_vol)
 	
 	# COMMAND SQUADS FIRE
 	if is_commanding_squads:
@@ -359,7 +307,6 @@ func shoot_mg_action() -> void:
 		for squad in commanded_squads:
 			if is_instance_valid(squad):
 				# Buffer shots: Add a small random delay to each squad's fire command
-				# This prevents 15+ shots happening on the exact same frame
 				get_tree().create_timer(randf_range(0.0, 0.15)).timeout.connect(
 					func(): if is_instance_valid(squad): squad.command_fire_at(aim_target)
 				)
@@ -398,16 +345,14 @@ func set_faction(new_faction: String) -> void:
 
 func set_active(active: bool) -> void:
 	# Local 'active' state for camera/input control
-	# In multiplayer, we also check authority, but this handles the camera switching logic
 	is_active = active
 	if camera:
 		camera.enabled = active
 		if active:
 			camera.make_current()
-			# Reset zoom to saved user preference or default
-			if not _is_zoomed_out:
-				_target_zoom = _saved_zoom
-				camera.zoom = _target_zoom
+			# Reset zoom via CameraControl
+			if camera.has_method("toggle_overview") and camera.is_overview_mode:
+				camera.toggle_overview()
 
 func take_damage(amount: int) -> void:
 	if GameManager.is_multiplayer:
@@ -419,9 +364,21 @@ func take_damage(amount: int) -> void:
 func rpc_take_damage(amount: int) -> void:
 	current_hp -= amount
 	print(name, " took damage: ", amount, " | HP: ", current_hp)
+	queue_redraw() # Update HP Bar
+	
+	# Visual Feedback
+	if camera and camera.has_method("add_trauma"):
+		var trauma = clamp(float(amount) / 20.0, 0.2, 0.8)
+		camera.add_trauma(trauma)
 	
 	if current_hp <= 0:
 		print(name, " DIED! Respawning at Core...")
+		
+		# Stop music on death
+		var mm = get_tree().root.find_child("MusicManager", true, false)
+		if mm and mm.has_method("on_player_death"):
+			mm.on_player_death()
+			
 		_respawn_at_core()
 
 func _respawn_at_core() -> void:
@@ -433,13 +390,13 @@ func _respawn_at_core() -> void:
 	
 	for b in buildings:
 		if "faction" in b and b.faction == faction:
-			if b.is_in_group("core") or b.name.contains("Core"): # Assuming Core scene is named or grouped
+			if b.is_in_group("core") or b.name.contains("Core"):
 				global_position = b.global_position + Vector2(0, 200)
 				core_found = true
 				break
 	
 	if not core_found:
-		# Fallback if no core (shouldn't happen in normal gameplay)
+		# Fallback
 		if faction == "blue":
 			global_position = Vector2(LIMIT_LEFT + 1200.0, 0)
 		elif faction == "red":
@@ -448,5 +405,5 @@ func _respawn_at_core() -> void:
 			global_position = Vector2.ZERO
 			
 	# Reset Camera if needed
-	if _is_zoomed_out:
-		_toggle_zoom_out() # Snap back to player view
+	if camera and camera.is_overview_mode:
+		camera.toggle_overview()

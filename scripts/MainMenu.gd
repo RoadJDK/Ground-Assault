@@ -14,6 +14,7 @@ func _ready() -> void:
 	# Connect global signals
 	GameManager.game_started.connect(_on_game_started)
 	GameManager.player_connected_status.connect(_update_status)
+	MusicManager.enter_menu()
 	
 	# Set initial view
 	show_main_menu_view()

@@ -143,8 +143,15 @@ func _is_building_shielded(target: Node2D) -> bool:
 
 func _fire_mg_burst() -> void:
 	is_firing_burst = true
+	# Play SFX once per burst or per shot? User said "When a turret fires its Mg".
+	# MGs usually rapid fire. Playing one-shot per bullet might be too loud if 12 shots.
+	# But standard is per shot. Let's try per shot for juiciness, or maybe every 3rd shot.
+	# Given "TurretMg.wav", if it's a single shot sound, play every shot.
 	for i in range(shots_per_burst):
 		if not is_instance_valid(target_unit): break
+		
+		if SFXManager: SFXManager.play_turret_mg(muzzle_mg.global_position)
+		
 		var spread_angle = randf_range(-0.05, 0.05)
 		var fire_rot = head.rotation + spread_angle
 		# MG Radius = 0
@@ -155,6 +162,9 @@ func _fire_mg_burst() -> void:
 
 func _fire_howitzer() -> void:
 	timer_how = how_cooldown
+	
+	if SFXManager: SFXManager.play_turret_howitzer(muzzle_how.global_position)
+	
 	var fire_rot = head.rotation
 	if is_instance_valid(target_building):
 		fire_rot = (target_building.global_position - global_position).angle()

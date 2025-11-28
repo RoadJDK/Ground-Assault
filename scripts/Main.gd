@@ -48,6 +48,7 @@ var generated_obstacles: Array[Node2D] = []
 func _ready() -> void:
 	print("--- MAIN READY STARTED ---")
 	
+	MusicManager.enter_game()
 	if GameManager.is_multiplayer:
 		seed(12345)
 	
@@ -525,6 +526,7 @@ func _on_plot_clicked(plot_node) -> void:
 			if plot_node.can_build_here():
 				# Deduction happens via signal from plot
 				plot_node.build_specific_building(selected_building_tool, current_build_faction, current_unit_type)
+				if SFXManager: SFXManager.play_building_build(plot_node.global_position)
 			else:
 				print("Cannot build here!")
 		else:

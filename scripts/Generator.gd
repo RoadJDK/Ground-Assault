@@ -20,5 +20,5 @@ func _on_timer_timeout() -> void:
 	var main = get_tree().root.find_child("Main", true, false)
 	# Updated to pass faction to Main
 	if main and main.has_method("add_gold"):
-		var amount = 200
+		var amount = randf_range(2,3)
 		main.add_gold(amount, self.faction)

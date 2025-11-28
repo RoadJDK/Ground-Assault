@@ -18,6 +18,8 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameManager="*res://scripts/GameManager.gd"
+MusicManager="*res://scripts/MusicManager.gd"
+SFXManager="*res://scripts/SFXManager.gd"
 
 [display]
 
@@ -117,7 +119,8 @@ release_squads={
 
 [physics]
 
-common/physics_ticks_per_second=64
+common/physics_ticks_per_second=120
+common/max_physics_steps_per_frame=16
 
 [rendering]
 
