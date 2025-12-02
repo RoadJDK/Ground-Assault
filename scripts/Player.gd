@@ -19,13 +19,22 @@ var ai_sprint: bool = false
 var ai_shoot_requested: bool = false
 
 var camera: Camera2D = null
-var visual_node: CanvasItem = null
-var weapon_node = null # Untyped to support Node2D or Control (ColorRect)
+var visual_node: CanvasItem = null # Deprecated
+var weapon_node = null 
+var muzzle_node: Node2D = null
+
+# Visuals
+var sprite_blue: Sprite2D = null
+var sprite_red: Sprite2D = null
+var particles_node: CPUParticles2D = null
 
 # HP & Faction
 var max_hp: int = 450
 var current_hp: int = 450
-var faction: String = "neutral"
+var faction: String = "neutral":
+	set(value):
+		faction = value
+		_update_faction_visuals()
 
 # Weapon Stats
 var mg_damage: int = 3
@@ -52,6 +61,18 @@ var ai_debug_target_pos: Vector2 = Vector2.ZERO
 func _ready() -> void:
 	add_to_group("unit")
 	
+	# Find Visuals
+	sprite_blue = find_child("Blue", true, false)
+	sprite_red = find_child("Red", true, false)
+	particles_node = find_child("Particles", true, false)
+			
+	# Find Camera
+	camera = find_child("Camera2D", true, false)
+	
+	# Find Weapon parts
+	weapon_node = find_child("Weapon", true, false)
+	muzzle_node = find_child("Muzzle", true, false)
+	
 	# Create NavigationAgent if not present (since it's not in the scene file yet)
 	if not has_node("NavigationAgent2D"):
 		nav_agent = NavigationAgent2D.new()
@@ -70,6 +91,9 @@ func _ready() -> void:
 		
 	current_hp = max_hp
 	
+	# Initial Visual Update
+	_update_faction_visuals()
+	
 	# --- NETWORKING ---
 	if GameManager.is_multiplayer:
 		var sync = MultiplayerSynchronizer.new()
@@ -82,26 +106,16 @@ func _ready() -> void:
 		config.add_property("." + ":position")
 		config.add_property("." + ":rotation")
 		
-		# Sync Weapon Rotation if it exists
-		var w = find_child("Weapon", true, false)
-		if w:
-			# Use relative path from Player root
-			var w_path = str(self.get_path_to(w))
-			config.add_property(w_path + ":rotation")
+		# Sync Weapon Rotation if it exists (Deprecated: We sync Player rotation now)
+		# But keep for compatibility if needed
 			
 		sync.replication_config = config
+
+func _update_faction_visuals() -> void:
+	if not is_node_ready(): return
 	
-	# Find Camera
-	camera = find_child("Camera2D", true, false)
-	
-	# Find Visual (Sprite or ColorRect)
-	for child in get_children():
-		if child is Sprite2D or child is ColorRect or child is Polygon2D:
-			visual_node = child
-			break
-			
-	# Find Weapon
-	weapon_node = find_child("Weapon", true, false)
+	if sprite_blue: sprite_blue.visible = (faction == "blue")
+	if sprite_red: sprite_red.visible = (faction == "red")
 
 func _on_velocity_computed(safe_velocity: Vector2) -> void:
 	if is_ai_controlled:
@@ -112,6 +126,7 @@ func _physics_process(delta: float) -> void:
 	# Dead check (Prevent Zombie AI)
 	if current_hp <= 0:
 		velocity = Vector2.ZERO
+		_update_particles(false)
 		return
 
 	# Cooldown Management (Runs on all peers)
@@ -121,6 +136,8 @@ func _physics_process(delta: float) -> void:
 	if GameManager.is_multiplayer:
 		if not is_multiplayer_authority():
 			# We are a remote puppet. 
+			# Still update particles for visuals based on velocity?
+			_update_particles(velocity.length() > 10.0)
 			return 
 
 	if _show_range_timer > 0:
@@ -158,6 +175,10 @@ func _physics_process(delta: float) -> void:
 	var direction = Vector2.ZERO
 	var current_speed = speed
 	
+	# Inertia Settings
+	var accel = 10000.0
+	var friction = 1000.0
+	
 	if is_ai_controlled:
 		if ai_sprint:
 			current_speed = sprint_speed
@@ -171,20 +192,23 @@ func _physics_process(delta: float) -> void:
 			
 			if not nav_agent.is_navigation_finished():
 				var next_path_pos = nav_agent.get_next_path_position()
-				var new_velocity = global_position.direction_to(next_path_pos) * current_speed
+				var target_vel = global_position.direction_to(next_path_pos) * current_speed
 				
 				if nav_agent.avoidance_enabled:
-					nav_agent.set_velocity(new_velocity)
+					nav_agent.set_velocity(target_vel)
 					# Movement happens in _on_velocity_computed
 				else:
-					velocity = new_velocity
+					# Apply Inertia to AI
+					velocity = velocity.move_toward(target_vel, accel * delta)
 					move_and_slide()
 			else:
-				velocity = Vector2.ZERO
+				# Stop with friction
+				velocity = velocity.move_toward(Vector2.ZERO, friction * delta)
 				move_and_slide()
 		else:
 			# Fallback to direct vector if no nav target (or stopped)
-			velocity = ai_input_vector * current_speed
+			var target_vel = ai_input_vector * current_speed
+			velocity = velocity.move_toward(target_vel, accel * delta)
 			move_and_slide()
 
 		if ai_shoot_requested:
@@ -192,13 +216,11 @@ func _physics_process(delta: float) -> void:
 			ai_shoot_requested = false 
 			
 	elif is_active:
-		# Rotate Weapon to Mouse
-		if weapon_node:
-			var mouse_pos = get_global_mouse_position()
-			if weapon_node is Node2D:
-				weapon_node.look_at(mouse_pos)
-			elif weapon_node is Control:
-				weapon_node.rotation = (mouse_pos - weapon_node.global_position).angle()
+		# Rotate Player to Mouse (Whole Ship)
+		var mouse_pos = get_global_mouse_position()
+		var target_angle = (mouse_pos - global_position).angle()
+		# Smooth rotation? For now instant to match mouse feel
+		rotation = target_angle
 
 		# Shooting
 		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
@@ -220,18 +242,28 @@ func _physics_process(delta: float) -> void:
 		
 		# Movement (Allowed in both Close and Tactical views)
 		direction = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
-	else:
-		# Not active and not AI -> Freeze
-		velocity = Vector2.ZERO
+		
+		if direction:
+			var target_vel = direction * current_speed
+			var apply_accel = accel
+			# TURN BOOST: If turning against momentum, accelerate much faster
+			if velocity.dot(direction) < 0:
+				apply_accel = accel * 3.0
+				
+			velocity = velocity.move_toward(target_vel, apply_accel * delta)
+		else:
+			velocity = velocity.move_toward(Vector2.ZERO, friction * delta)
+
 		move_and_slide()
+	else:
+		# Not active and not AI -> Freeze (or drift to stop)
+		velocity = velocity.move_toward(Vector2.ZERO, friction * delta)
+		move_and_slide()
+		_update_particles(0.0)
 		return
 
-	if direction:
-		velocity = direction * current_speed
-	else:
-		velocity = Vector2.ZERO
-
-	move_and_slide()
+	# Update Particles
+	_update_particles(velocity.length())
 	
 	# Update Debug Visuals
 	if ai_debug_target_pos != Vector2.ZERO:
@@ -353,15 +385,20 @@ func shoot_mg_action() -> void:
 		mg_timer *= 0.66
 	
 	var spawn_pos = global_position
-	var spawn_rot = 0.0
+	var spawn_rot = rotation
 	
-	if weapon_node:
-		spawn_rot = weapon_node.rotation
-		var muzzle = weapon_node.find_child("Muzzle", true, false)
-		if muzzle:
-			spawn_pos = muzzle.global_position
-		else:
+	if muzzle_node:
+		spawn_pos = muzzle_node.global_position
+		spawn_rot = muzzle_node.global_rotation
+	elif weapon_node:
+		if weapon_node is Node2D:
 			spawn_pos = weapon_node.global_position
+			spawn_rot = weapon_node.global_rotation
+		else:
+			# Control Node fallback (e.g. ColorRect)
+			spawn_pos = weapon_node.global_position
+			# Use Player rotation for Controls attached to Player
+			spawn_rot = rotation
 	else:
 		spawn_rot = (get_global_mouse_position() - global_position).angle()
 	
@@ -429,14 +466,15 @@ func shoot_mg_action() -> void:
 		proj.rotation = spawn_rot
 		proj.setup(mg_damage, mg_speed, "all", self, 0.0)
 
+func _update_particles(current_vel_mag: float) -> void:
+	if particles_node:
+		particles_node.emitting = current_vel_mag > 10.0
+		var ratio = clamp(current_vel_mag / sprint_speed, 0.0, 1.0)
+		particles_node.speed_scale = lerp(0.5, 2.0, ratio)
+
 func set_faction(new_faction: String) -> void:
 	faction = new_faction
-	if not visual_node: return
-	
-	match faction:
-		"blue": visual_node.modulate = Color(0.4, 0.4, 1.0)
-		"red": visual_node.modulate = Color(1.0, 0.4, 0.4)
-		_: visual_node.modulate = Color.WHITE
+	# Visual update handled by setter
 
 func set_active(active: bool) -> void:
 	# Local 'active' state for camera/input control
@@ -587,11 +625,8 @@ func _respawn_at_core() -> void:
 
 # --- AI HELPER METHODS ---
 func ai_look_at(target_pos: Vector2) -> void:
-	if weapon_node:
-		if weapon_node is Node2D:
-			weapon_node.look_at(target_pos)
-		elif weapon_node is Control:
-			weapon_node.rotation = (target_pos - weapon_node.global_position).angle()
+	var target_angle = (target_pos - global_position).angle()
+	rotation = target_angle
 
 func ai_command_squads(active: bool) -> void:
 	if active and not is_commanding_squads:
