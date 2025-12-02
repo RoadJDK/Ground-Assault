@@ -6,6 +6,7 @@ signal player_connected_status(status_msg: String)
 var is_multiplayer: bool = false
 var my_faction: String = "blue"
 var red_player_id: int = 1 # Default to 1 (Host) if not set, but will be set on connect
+var difficulty: String = "sandbox" # "sandbox", "easy", "hard"
 
 const PORT = 7777
 const DEFAULT_IP = "127.0.0.1"
@@ -14,6 +15,7 @@ func reset():
 	is_multiplayer = false
 	my_faction = "blue"
 	red_player_id = 1
+	difficulty = "sandbox"
 	multiplayer.multiplayer_peer = null
 
 func host_game():

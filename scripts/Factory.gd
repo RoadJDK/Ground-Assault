@@ -24,6 +24,9 @@ func _on_timer_timeout() -> void:
 	if GameManager.is_multiplayer and not multiplayer.is_server():
 		return
 
+	# FIX: Do not release ownership. Wait for death.
+	# Removed distance check logic here.
+			
 	if _check_safe_spawn():
 		spawn_squad()
 	else:

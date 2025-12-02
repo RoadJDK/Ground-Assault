@@ -31,6 +31,19 @@ func _on_dome_area_entered(area: Node) -> void:
 	if area.is_in_group("projectile"):
 		# Check projectile logic
 		if "shooter" in area and is_instance_valid(area.shooter):
-			# If projectile comes from an enemy, destroy it
+			# If projectile comes from an enemy
 			if "faction" in area.shooter and area.shooter.faction != self.faction:
-				area.queue_free()
+				# FIX: Couple shield with building (Resistance logic)
+				var dmg = 0
+				if "damage" in area:
+					dmg = area.damage
+				
+				# Apply 50% damage reduction for shield hits
+				take_damage(dmg / 2)
+				
+				# Trigger projectile explosion (Visuals + cleanup)
+				# Pass 'null' as target to prevent it from dealing damage again via its own logic
+				if area.has_method("_explode"):
+					area._explode(null)
+				else:
+					area.queue_free()

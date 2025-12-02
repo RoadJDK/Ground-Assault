@@ -9,6 +9,9 @@ extends Control
 @onready var ip_text: LineEdit = $IPText
 @onready var back_button: Button = $BackButton
 @onready var status_label: Label = $StatusLabel
+@onready var sandbox_button: Button = $SandboxButton
+@onready var easy_button: Button = $EasyButton
+@onready var hard_button: Button = $HardButton
 
 func _ready() -> void:
 	# Connect global signals
@@ -39,6 +42,11 @@ func show_main_menu_view() -> void:
 	back_button.hide()
 	status_label.hide()
 	
+	# Hide Singleplayer items
+	sandbox_button.hide()
+	easy_button.hide()
+	hard_button.hide()
+	
 	# Clear status when returning to menu
 	status_label.text = ""
 
@@ -65,12 +73,30 @@ func show_multi_menu_view() -> void:
 				break
 		ip_text.text = local_ip
 
+func show_singleplayer_menu_view() -> void:
+	# Hide Main Menu items
+	singleplayer_button.hide()
+	multiplayer_button.hide()
+	settings_button.hide()
+	quit_button.hide()
+	
+	# Hide Multiplayer items
+	host_button.hide()
+	join_button.hide()
+	ip_text.hide()
+	status_label.hide()
+	
+	# Show Singleplayer items
+	sandbox_button.show()
+	easy_button.show()
+	hard_button.show()
+	back_button.show()
+
 # --- Button Connections ---
 
 func _on_singleplayer_button_pressed() -> void:
 	# Ported from old: _on_singleplayer_pressed
-	GameManager.reset()
-	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+	show_singleplayer_menu_view()
 
 func _on_multiplayer_button_pressed() -> void:
 	# Ported from old: _on_multiplayer_pressed
@@ -101,4 +127,22 @@ func _on_back_button_pressed() -> void:
 	show_main_menu_view()
 
 func _on_game_started():
+	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+
+
+func _on_sandbox_button_pressed() -> void:
+	GameManager.reset()
+	GameManager.difficulty = "sandbox"
+	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+
+
+func _on_easy_button_pressed() -> void:
+	GameManager.reset()
+	GameManager.difficulty = "easy"
+	get_tree().change_scene_to_file("res://scenes/Main.tscn")
+
+
+func _on_hard_button_pressed() -> void:
+	GameManager.reset()
+	GameManager.difficulty = "hard"
 	get_tree().change_scene_to_file("res://scenes/Main.tscn")

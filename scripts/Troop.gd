@@ -58,6 +58,9 @@ var separation_area: Area2D = null
 var cached_shield: Node2D = null
 var _shield_check_timer: float = 0.0
 
+# Rocket Windup
+var windup_timer: float = 3.0
+
 func _ready() -> void:
 	current_hp = max_hp
 	noise_seed = Vector2(randf(), randf()) * 10.0
@@ -208,11 +211,17 @@ func _handle_combat(delta: float) -> void:
 	if target_enemy != null and not is_instance_valid(target_enemy):
 		target_enemy = null
 		# Don't immediately scan, wait for timer to spread load
+		
+	# FIX: Check if target is "dead" (Player/Unit HP <= 0)
+	if target_enemy != null and "current_hp" in target_enemy and target_enemy.current_hp <= 0:
+		target_enemy = null
+		windup_timer = 3.0 # Reset Windup
 	
 	if scan_timer <= 0:
 		scan_timer = randf_range(0.2, 0.4) # Randomize interval slightly
 		if target_enemy == null:
 			_scan_for_enemies()
+			if target_enemy: windup_timer = 3.0 # Reset on new target
 	
 	if is_instance_valid(target_enemy):
 		var dist = global_position.distance_to(target_enemy.global_position)
@@ -225,6 +234,7 @@ func _handle_combat(delta: float) -> void:
 		# Stop chasing if too far (De-aggro)
 		if effective_dist > attack_range * 1.5:
 			target_enemy = null
+			windup_timer = 3.0 # Reset Windup
 			return
 		
 		# Shield Check (Throttled)
@@ -238,6 +248,12 @@ func _handle_combat(delta: float) -> void:
 			required_dist = 600.0
 		
 		if effective_dist <= required_dist + 10.0:
+			# ROCKET WINDUP LOGIC
+			if unit_type == UnitType.ROCKET:
+				if windup_timer > 0:
+					windup_timer -= delta
+					return # Wait for windup
+					
 			if attack_timer <= 0:
 				_attack_target()
 

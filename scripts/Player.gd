@@ -12,6 +12,12 @@ const LIMIT_RIGHT: float = 12293.0
 const LIMIT_BOTTOM: float = 6650.0 
 
 var is_active: bool = true
+var is_ai_controlled: bool = false
+var ai_input_vector: Vector2 = Vector2.ZERO
+var ai_nav_target: Vector2 = Vector2.ZERO # New: For pathfinding
+var ai_sprint: bool = false
+var ai_shoot_requested: bool = false
+
 var camera: Camera2D = null
 var visual_node: CanvasItem = null
 var weapon_node = null # Untyped to support Node2D or Control (ColorRect)
@@ -38,8 +44,30 @@ var is_hovering_interactive: bool = false
 var commanded_squads: Array = []
 var is_commanding_squads: bool = false
 
+var nav_agent: NavigationAgent2D = null
+
+# DEBUG VISUALS
+var ai_debug_target_pos: Vector2 = Vector2.ZERO
+
 func _ready() -> void:
 	add_to_group("unit")
+	
+	# Create NavigationAgent if not present (since it's not in the scene file yet)
+	if not has_node("NavigationAgent2D"):
+		nav_agent = NavigationAgent2D.new()
+		nav_agent.name = "NavigationAgent2D"
+		add_child(nav_agent)
+		# Configure agent
+		nav_agent.path_desired_distance = 20.0
+		nav_agent.target_desired_distance = 20.0
+		nav_agent.radius = 30.0
+		nav_agent.max_speed = sprint_speed # Set max speed to sprint speed so it doesn't cap lower
+		nav_agent.avoidance_enabled = true
+		nav_agent.velocity_computed.connect(_on_velocity_computed)
+	else:
+		nav_agent = $NavigationAgent2D
+		nav_agent.max_speed = sprint_speed # Ensure existing agent also has high max speed
+		
 	current_hp = max_hp
 	
 	# --- NETWORKING ---
@@ -75,7 +103,17 @@ func _ready() -> void:
 	# Find Weapon
 	weapon_node = find_child("Weapon", true, false)
 
+func _on_velocity_computed(safe_velocity: Vector2) -> void:
+	if is_ai_controlled:
+		velocity = safe_velocity
+		move_and_slide()
+
 func _physics_process(delta: float) -> void:
+	# Dead check (Prevent Zombie AI)
+	if current_hp <= 0:
+		velocity = Vector2.ZERO
+		return
+
 	# Cooldown Management (Runs on all peers)
 	if mg_timer > 0:
 		mg_timer -= delta
@@ -116,46 +154,88 @@ func _physics_process(delta: float) -> void:
 	position.x = clamp(position.x, limit_left + margin, limit_right - margin)
 	position.y = clamp(position.y, limit_top + margin, limit_bottom - margin)
 
-	if not is_active:
+	# Input Handling
+	var direction = Vector2.ZERO
+	var current_speed = speed
+	
+	if is_ai_controlled:
+		if ai_sprint:
+			current_speed = sprint_speed
+		
+		# AI Pathfinding Logic
+		if ai_nav_target != Vector2.ZERO:
+			nav_agent.target_position = ai_nav_target
+			
+			# Update Agent Speed
+			nav_agent.max_speed = current_speed
+			
+			if not nav_agent.is_navigation_finished():
+				var next_path_pos = nav_agent.get_next_path_position()
+				var new_velocity = global_position.direction_to(next_path_pos) * current_speed
+				
+				if nav_agent.avoidance_enabled:
+					nav_agent.set_velocity(new_velocity)
+					# Movement happens in _on_velocity_computed
+				else:
+					velocity = new_velocity
+					move_and_slide()
+			else:
+				velocity = Vector2.ZERO
+				move_and_slide()
+		else:
+			# Fallback to direct vector if no nav target (or stopped)
+			velocity = ai_input_vector * current_speed
+			move_and_slide()
+
+		if ai_shoot_requested:
+			_shoot_mg()
+			ai_shoot_requested = false 
+			
+	elif is_active:
+		# Rotate Weapon to Mouse
+		if weapon_node:
+			var mouse_pos = get_global_mouse_position()
+			if weapon_node is Node2D:
+				weapon_node.look_at(mouse_pos)
+			elif weapon_node is Control:
+				weapon_node.rotation = (mouse_pos - weapon_node.global_position).angle()
+
+		# Shooting
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+			_shoot_mg()
+			
+		# Spacebar Zoom Toggle
+		if Input.is_action_just_pressed("ui_select"): # Spacebar
+			if camera and camera.has_method("toggle_overview"):
+				camera.toggle_overview()
+			
+		# COMMANDING INPUTS
+		if Input.is_action_just_pressed("command_squads"):
+			_start_commanding()
+		elif Input.is_action_just_pressed("release_squads"):
+			_stop_commanding()
+
+		if Input.is_key_pressed(KEY_SHIFT):
+			current_speed = sprint_speed
+		
+		# Movement (Allowed in both Close and Tactical views)
+		direction = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+	else:
+		# Not active and not AI -> Freeze
 		velocity = Vector2.ZERO
 		move_and_slide()
 		return
-		
-	# Rotate Weapon to Mouse
-	if weapon_node:
-		var mouse_pos = get_global_mouse_position()
-		if weapon_node is Node2D:
-			weapon_node.look_at(mouse_pos)
-		elif weapon_node is Control:
-			weapon_node.rotation = (mouse_pos - weapon_node.global_position).angle()
 
-	# Shooting
-	if Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
-		_shoot_mg()
-		
-	# Spacebar Zoom Toggle
-	if Input.is_action_just_pressed("ui_select"): # Spacebar
-		if camera and camera.has_method("toggle_overview"):
-			camera.toggle_overview()
-		
-	# COMMANDING INPUTS
-	if Input.is_action_just_pressed("command_squads"):
-		_start_commanding()
-	elif Input.is_action_just_pressed("release_squads"):
-		_stop_commanding()
-
-	var current_speed = speed
-	if Input.is_key_pressed(KEY_SHIFT):
-		current_speed = sprint_speed
-	
-	# Movement (Allowed in both Close and Tactical views)
-	var direction = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	if direction:
 		velocity = direction * current_speed
 	else:
 		velocity = Vector2.ZERO
 
 	move_and_slide()
+	
+	# Update Debug Visuals
+	if ai_debug_target_pos != Vector2.ZERO:
+		queue_redraw()
 
 func _start_commanding() -> void:
 	# Removed "if is_commanding_squads: return" to allow adding more squads
@@ -234,6 +314,12 @@ func _draw() -> void:
 		
 		# Border
 		draw_rect(Rect2(-bar_width/2, y_offset, bar_width, bar_height), Color.BLACK, false, 1.0)
+
+	# AI Debug Path
+	if ai_debug_target_pos != Vector2.ZERO:
+		var target_local = to_local(ai_debug_target_pos)
+		draw_line(Vector2.ZERO, target_local, Color.MAGENTA, 2.0)
+		draw_circle(target_local, 10.0, Color.MAGENTA)
 
 func _unhandled_input(_event: InputEvent) -> void:
 	pass # Delegate all camera inputs to CameraControl
@@ -389,17 +475,77 @@ func rpc_take_damage(amount: int, source_type: String = "") -> void:
 		camera.add_trauma(trauma)
 	
 	if current_hp <= 0:
-		print(name, " DIED! Respawning at Core...")
+		print(name, " DIED! Starting Respawn Sequence...")
+		
+		# Hide player visual/disable collision temporarily
+		# Keep position WHERE THEY DIED to avoid camera jumping
+		is_active = false
+		visible = false
+		
+		# Disable collision so they aren't targeted or blocking
+		set_collision_layer_value(1, false) # Assuming layer 1 is units
+		set_collision_mask_value(1, false)
+		
+		# Remove from "unit" group so AI/Turrets stop targeting them
+		if is_in_group("unit"):
+			remove_from_group("unit")
 		
 		# Stop music on death
 		var mm = get_tree().root.find_child("MusicManager", true, false)
 		if mm and mm.has_method("on_player_death"):
 			mm.on_player_death()
 			
-		_respawn_at_core()
+		# Start Respawn Sequence (Local only for UI, but logic runs on client owner)
+		# Only show UI if THIS player is the one controlled by the local human
+		var is_local_human = false
+		if GameManager.is_multiplayer:
+			if is_multiplayer_authority() and not is_ai_controlled:
+				is_local_human = true
+		else:
+			# Singleplayer: if active and not AI (or if we are the main player)
+			if is_active and not is_ai_controlled:
+				is_local_human = true
+			# If we just died, is_active was set to false above. Check control flag?
+			# In singleplayer, there is only one human.
+			if not is_ai_controlled:
+				is_local_human = true
+
+		if is_local_human:
+			_start_respawn_sequence_ui()
+		else:
+			# Just timer, no UI
+			_start_respawn_timer()
+
+func _start_respawn_sequence_ui() -> void:
+	var game_ui = get_tree().root.find_child("GameUI", true, false)
+	if game_ui:
+		game_ui.show_respawn_screen(10)
+		
+	for i in range(10, 0, -1):
+		if game_ui: game_ui.update_respawn_timer(i)
+		await get_tree().create_timer(1.0).timeout
+		
+	if game_ui:
+		game_ui.hide_respawn_screen()
+		
+	_respawn_at_core()
+
+func _start_respawn_timer() -> void:
+	# Background timer for AI or remote players
+	await get_tree().create_timer(10.0).timeout
+	_respawn_at_core()
 
 func _respawn_at_core() -> void:
 	current_hp = max_hp
+	visible = true
+	
+	# Re-enable collision
+	set_collision_layer_value(1, true)
+	set_collision_mask_value(1, true)
+	
+	# Re-add to group for targeting
+	if not is_in_group("unit"):
+		add_to_group("unit")
 	
 	# Find Friendly Core
 	var buildings = get_tree().get_nodes_in_group("building")
@@ -424,3 +570,31 @@ func _respawn_at_core() -> void:
 	# Reset Camera if needed
 	if camera and camera.is_overview_mode:
 		camera.toggle_overview()
+
+	# Re-enable controls if this is the local player (or AI)
+	if not GameManager.is_multiplayer or is_multiplayer_authority():
+		is_active = true
+		# For AI
+		if is_ai_controlled:
+			is_active = false # Keep as false if AI, but ensure visible above handled it
+
+	# Music Resume handled by MusicManager waiting for signal or timer?
+	# MusicManager.on_player_death waits 1s then pauses.
+	# We need to tell it to resume now.
+	var mm = get_tree().root.find_child("MusicManager", true, false)
+	if mm and mm.has_method("_resume_game_music"):
+		mm._resume_game_music()
+
+# --- AI HELPER METHODS ---
+func ai_look_at(target_pos: Vector2) -> void:
+	if weapon_node:
+		if weapon_node is Node2D:
+			weapon_node.look_at(target_pos)
+		elif weapon_node is Control:
+			weapon_node.rotation = (target_pos - weapon_node.global_position).angle()
+
+func ai_command_squads(active: bool) -> void:
+	if active and not is_commanding_squads:
+		_start_commanding()
+	elif not active and is_commanding_squads:
+		_stop_commanding()

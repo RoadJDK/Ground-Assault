@@ -63,6 +63,7 @@ text = "Quit"
 flat = true
 
 [node name="HostButton" type="Button" parent="."]
+visible = false
 layout_mode = 0
 offset_left = 488.0
 offset_top = 442.0
@@ -73,6 +74,7 @@ text = "Host Game (Blue)"
 flat = true
 
 [node name="IPText" type="LineEdit" parent="."]
+visible = false
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 0
 offset_left = 487.0
@@ -83,6 +85,7 @@ placeholder_text = "Enter IP (Default 127.0.0.1)"
 alignment = 1
 
 [node name="JoinButton" type="Button" parent="."]
+visible = false
 layout_mode = 0
 offset_left = 487.0
 offset_top = 584.0
@@ -93,6 +96,7 @@ text = "Join Game (Red)"
 flat = true
 
 [node name="StatusLabel" type="Label" parent="."]
+visible = false
 layout_mode = 0
 offset_left = 567.0
 offset_top = 968.0
@@ -109,6 +113,38 @@ size_flags_vertical = 3
 text = "Back"
 flat = true
 
+[node name="SandboxButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 488.0
+offset_top = 442.0
+offset_right = 1438.0
+offset_bottom = 556.0
+size_flags_vertical = 3
+text = "Sandbox
+"
+flat = true
+
+[node name="EasyButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 485.0
+offset_top = 583.0
+offset_right = 1435.0
+offset_bottom = 696.0
+size_flags_vertical = 3
+text = "Easy
+"
+flat = true
+
+[node name="HardButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 488.0
+offset_top = 723.0
+offset_right = 1436.0
+offset_bottom = 837.0
+size_flags_vertical = 3
+text = "Hard"
+flat = true
+
 [connection signal="pressed" from="SingleplayerButton" to="." method="_on_singleplayer_button_pressed"]
 [connection signal="pressed" from="MultiplayerButton" to="." method="_on_multiplayer_button_pressed"]
 [connection signal="pressed" from="SettingsButton" to="." method="_on_settings_button_pressed"]
@@ -116,3 +152,6 @@ flat = true
 [connection signal="pressed" from="HostButton" to="." method="_on_host_button_pressed"]
 [connection signal="pressed" from="JoinButton" to="." method="_on_join_button_pressed"]
 [connection signal="pressed" from="BackButton" to="." method="_on_back_button_pressed"]
+[connection signal="pressed" from="SandboxButton" to="." method="_on_sandbox_button_pressed"]
+[connection signal="pressed" from="EasyButton" to="." method="_on_easy_button_pressed"]
+[connection signal="pressed" from="HardButton" to="." method="_on_hard_button_pressed"]

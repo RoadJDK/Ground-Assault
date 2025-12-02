@@ -13,9 +13,25 @@ signal build_requested(building_type)
 
 @onready var fps_label = find_child("FPSLabel", true, false)
 
+@onready var respawn_overlay = find_child("RespawnOverlay", true, false)
+@onready var respawn_label = find_child("RespawnLabel", true, false)
+
 func _process(_delta: float) -> void:
 	if fps_label:
 		fps_label.text = "FPS: " + str(Engine.get_frames_per_second())
+
+func show_respawn_screen(time: int) -> void:
+	if respawn_overlay:
+		respawn_overlay.show()
+	update_respawn_timer(time)
+
+func update_respawn_timer(time: int) -> void:
+	if respawn_label:
+		respawn_label.text = str(time)
+
+func hide_respawn_screen() -> void:
+	if respawn_overlay:
+		respawn_overlay.hide()
 
 func _ready() -> void:
 	pass

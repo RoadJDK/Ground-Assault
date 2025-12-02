@@ -161,6 +161,14 @@ func _ready() -> void:
 	for plot in plots:
 		if not plot.is_connected("plot_selected", _on_plot_clicked):
 			plot.plot_selected.connect(_on_plot_clicked)
+			
+	# --- AI SETUP ---
+	if not GameManager.is_multiplayer and GameManager.difficulty != "sandbox":
+		print("Initializing AI... Difficulty: ", GameManager.difficulty)
+		var ai = AIHelper.new()
+		ai.name = "AIController"
+		add_child(ai)
+		ai.setup(self, GameManager.difficulty, "red")
 	
 	print("--- MAIN READY FINISHED ---")
 
@@ -446,7 +454,7 @@ func _update_plot_availability() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
-		if not GameManager.is_multiplayer:
+		if not GameManager.is_multiplayer and GameManager.difficulty == "sandbox":
 			if event.keycode == KEY_Q:
 				_set_active_player("blue")
 			elif event.keycode == KEY_E:
